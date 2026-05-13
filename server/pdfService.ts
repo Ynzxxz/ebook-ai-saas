@@ -28,7 +28,6 @@ const C = {
   white: "#ffffff",
   textPrimary: "#e5e7eb",
   textSecondary: "#d1d5db",
-  textMuted: "#9ca3af",
   textDim: "#6b7280",
   separator: "#374151",
 };
@@ -37,33 +36,31 @@ const MARGIN = 72;
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const CONTENT_W = PAGE_W - MARGIN * 2;
-const BOTTOM_LIMIT = PAGE_H - 80; // leave 80pt for footer
+// Reserve space at the bottom for footer — never render text below this line
+const BOTTOM_LIMIT = PAGE_H - 90;
 
-// ─── Page state tracker ────────────────────────────────────────────────────────
-// We manage a mutable cursor `y` and call addDecoratedPage() whenever we need
-// a new page, so every page always gets the background + accent bar.
+// ─── Page helpers ──────────────────────────────────────────────────────────────
 
-function addDecoratedPage(doc: PDFKit.PDFDocument, hasWatermark: boolean, watermarkText: string): number {
-  doc.addPage();
+/**
+ * Add a new decorated content page and return the starting Y cursor.
+ * IMPORTANT: Never call doc.addPage() directly in content rendering —
+ * always use this function to ensure consistent decoration.
+ */
+function addContentPage(doc: PDFKit.PDFDocument, hasWatermark: boolean, wm: string): number {
+  doc.addPage({ size: "A4", margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
+  // Fill background FIRST before any text to avoid PDFKit auto-page side effects
   doc.rect(0, 0, PAGE_W, PAGE_H).fillColor(C.pageBg).fillOpacity(1).fill();
   doc.rect(0, 0, PAGE_W, 6).fillColor(C.accent).fillOpacity(1).fill();
-  if (hasWatermark) {
-    drawWatermark(doc, watermarkText, 32);
-  }
-  return 50; // top cursor after header bar
+  if (hasWatermark) drawWatermark(doc, wm, 32);
+  return 50;
 }
 
-function ensureSpace(
-  doc: PDFKit.PDFDocument,
-  y: number,
-  needed: number,
-  hasWatermark: boolean,
-  watermarkText: string
-): number {
-  if (y + needed > BOTTOM_LIMIT) {
-    return addDecoratedPage(doc, hasWatermark, watermarkText);
-  }
-  return y;
+/**
+ * Ensure there is at least `needed` points of space below `y`.
+ * If not, start a new page and return the new cursor.
+ */
+function ensureSpace(doc: PDFKit.PDFDocument, y: number, needed: number, hw: boolean, wm: string): number {
+  return y + needed > BOTTOM_LIMIT ? addContentPage(doc, hw, wm) : y;
 }
 
 function drawWatermark(doc: PDFKit.PDFDocument, text: string, size: number) {
@@ -74,39 +71,15 @@ function drawWatermark(doc: PDFKit.PDFDocument, text: string, size: number) {
   doc.restore();
 }
 
-// ─── Markdown block types ──────────────────────────────────────────────────────
+// ─── Markdown parser ───────────────────────────────────────────────────────────
 
 type BlockType = "h1" | "h2" | "h3" | "paragraph" | "bullet" | "numbered";
 
-interface Segment {
-  text: string;
-  bold: boolean;
-}
-
 interface ContentBlock {
   type: BlockType;
-  segments: Segment[];
-  index?: number; // for numbered lists
-}
-
-/** Split a line into bold/normal segments based on **text** markers */
-function parseInline(text: string): Segment[] {
-  const segments: Segment[] = [];
-  const re = /\*\*(.+?)\*\*/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) segments.push({ text: text.slice(last, m.index), bold: false });
-    segments.push({ text: m[1], bold: true });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) segments.push({ text: text.slice(last), bold: false });
-  return segments.filter((s) => s.text.length > 0);
-}
-
-/** Strip all inline markdown to plain text */
-function segmentsToPlain(segs: Segment[]): string {
-  return segs.map((s) => s.text).join("");
+  /** Plain text — inline markdown already stripped */
+  text: string;
+  index?: number; // for numbered list items
 }
 
 function parseMarkdownBlocks(content: string): ContentBlock[] {
@@ -116,9 +89,9 @@ function parseMarkdownBlocks(content: string): ContentBlock[] {
   let paraLines: string[] = [];
   let numberedIndex = 0;
 
-  const flushParagraph = () => {
-    const text = paraLines.join(" ").trim();
-    if (text) blocks.push({ type: "paragraph", segments: parseInline(stripBasicMarkdown(text)) });
+  const flushPara = () => {
+    const t = paraLines.join(" ").trim();
+    if (t) blocks.push({ type: "paragraph", text: stripInline(t) });
     paraLines = [];
   };
 
@@ -126,217 +99,170 @@ function parseMarkdownBlocks(content: string): ContentBlock[] {
     const line = rawLine.trimEnd();
 
     if (line.startsWith("### ")) {
-      flushParagraph();
-      blocks.push({ type: "h3", segments: [{ text: stripBasicMarkdown(line.slice(4).trim()), bold: false }] });
+      flushPara();
+      blocks.push({ type: "h3", text: stripInline(line.slice(4).trim()) });
       numberedIndex = 0;
     } else if (line.startsWith("## ")) {
-      flushParagraph();
-      blocks.push({ type: "h2", segments: [{ text: stripBasicMarkdown(line.slice(3).trim()), bold: false }] });
+      flushPara();
+      blocks.push({ type: "h2", text: stripInline(line.slice(3).trim()) });
       numberedIndex = 0;
     } else if (line.startsWith("# ")) {
-      flushParagraph();
-      blocks.push({ type: "h1", segments: [{ text: stripBasicMarkdown(line.slice(2).trim()), bold: false }] });
+      flushPara();
+      blocks.push({ type: "h1", text: stripInline(line.slice(2).trim()) });
       numberedIndex = 0;
     } else if (/^[-*•]\s+/.test(line)) {
-      flushParagraph();
-      const itemText = line.replace(/^[-*•]\s+/, "").trim();
-      if (itemText) blocks.push({ type: "bullet", segments: parseInline(stripBasicMarkdown(itemText)) });
+      flushPara();
+      const t = line.replace(/^[-*•]\s+/, "").trim();
+      if (t) blocks.push({ type: "bullet", text: stripInline(t) });
       numberedIndex = 0;
     } else if (/^\d+\.\s+/.test(line)) {
-      flushParagraph();
+      flushPara();
       numberedIndex++;
-      const itemText = line.replace(/^\d+\.\s+/, "").trim();
-      if (itemText) blocks.push({ type: "numbered", segments: parseInline(stripBasicMarkdown(itemText)), index: numberedIndex });
+      const t = line.replace(/^\d+\.\s+/, "").trim();
+      if (t) blocks.push({ type: "numbered", text: stripInline(t), index: numberedIndex });
     } else if (line.trim() === "") {
-      flushParagraph();
+      flushPara();
       numberedIndex = 0;
     } else {
       paraLines.push(line);
     }
   }
-  flushParagraph();
+  flushPara();
 
-  return blocks.filter((b) => b.segments.length > 0 && segmentsToPlain(b.segments).trim().length > 0);
+  return blocks.filter((b) => b.text.trim().length > 0);
 }
 
-/** Strip non-bold inline markdown (italic, code, links, strikethrough) */
-function stripBasicMarkdown(text: string): string {
+/** Remove all inline markdown syntax, keep plain text */
+function stripInline(text: string): string {
   return text
-    .replace(/\*\*\*(.+?)\*\*\*/g, "**$1**") // bold+italic → bold only
-    .replace(/\*(.+?)\*/g, "$1")              // italic
-    .replace(/_(.+?)_/g, "$1")               // italic underscore
-    .replace(/`(.+?)`/g, "$1")               // code
-    .replace(/\[(.+?)\]\(.+?\)/g, "$1")      // links
-    .replace(/~~(.+?)~~/g, "$1")             // strikethrough
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
     .trim();
 }
 
-// ─── Inline text renderer ──────────────────────────────────────────────────────
-// PDFKit doesn't support mixed bold/normal in one call, so we split into runs.
-
-function renderInlineSegments(
-  doc: PDFKit.PDFDocument,
-  segments: Segment[],
-  x: number,
-  y: number,
-  fontSize: number,
-  color: string,
-  maxWidth: number,
-  lineGap = 3
-): number {
-  // For simplicity and reliability, render as plain text with bold markers
-  // replaced by the full bold font for the whole block when all-bold,
-  // otherwise strip bold markers and render as normal text.
-  // This avoids complex multi-run layout calculations.
-  const hasBold = segments.some((s) => s.bold);
-  const plainText = segmentsToPlain(segments);
-
-  if (hasBold) {
-    // Render bold segments inline using continued:true trick
-    doc.fillColor(color).fillOpacity(1).fontSize(fontSize);
-    let isFirst = true;
-    for (const seg of segments) {
-      doc.font(seg.bold ? "Helvetica-Bold" : "Helvetica");
-      if (isFirst) {
-        doc.text(seg.text, x, y, { width: maxWidth, lineGap, continued: segments.indexOf(seg) < segments.length - 1 });
-        isFirst = false;
-      } else {
-        doc.text(seg.text, { width: maxWidth, lineGap, continued: segments.indexOf(seg) < segments.length - 1 });
-      }
-    }
-    // After continued chain, doc.y is updated
-    return doc.y + lineGap + 2;
-  } else {
-    doc.fillColor(color).fillOpacity(1).font("Helvetica").fontSize(fontSize);
-    doc.text(plainText, x, y, { width: maxWidth, lineGap });
-    return doc.y + lineGap + 2;
-  }
-}
-
 // ─── Block renderer ────────────────────────────────────────────────────────────
+// KEY RULE: Every doc.text() call uses an explicit (x, y) position.
+// We NEVER rely on doc.y after a text call that could have triggered
+// PDFKit's internal pagination — we always track y ourselves.
 
 function renderBlock(
   doc: PDFKit.PDFDocument,
   block: ContentBlock,
   y: number,
-  hasWatermark: boolean,
-  watermarkText: string
+  hw: boolean,
+  wm: string
 ): number {
-  const plain = segmentsToPlain(block.segments);
+  const { text } = block;
+  if (!text) return y;
 
   switch (block.type) {
+    // ── Headings ──────────────────────────────────────────────────────────────
     case "h1": {
-      y = ensureSpace(doc, y, 36, hasWatermark, watermarkText);
+      y = ensureSpace(doc, y, 40, hw, wm);
       doc.fillColor(C.accentLighter).fillOpacity(1).font("Helvetica-Bold").fontSize(16);
-      doc.text(plain, MARGIN, y, { width: CONTENT_W });
-      y = doc.y + 14;
-      break;
+      const h = doc.heightOfString(text, { width: CONTENT_W });
+      doc.text(text, MARGIN, y, { width: CONTENT_W, lineGap: 2 });
+      return y + h + 16;
     }
     case "h2": {
-      y = ensureSpace(doc, y, 32, hasWatermark, watermarkText);
-      // Accent bar
-      doc.rect(MARGIN, y + 2, 3, 13).fillColor(C.accent).fillOpacity(1).fill();
+      y = ensureSpace(doc, y, 34, hw, wm);
+      // Accent side bar
+      doc.rect(MARGIN, y + 1, 3, 14).fillColor(C.accent).fillOpacity(1).fill();
       doc.fillColor(C.accentLight).fillOpacity(1).font("Helvetica-Bold").fontSize(13);
-      doc.text(plain, MARGIN + 10, y, { width: CONTENT_W - 10 });
-      y = doc.y + 12;
-      break;
+      const h = doc.heightOfString(text, { width: CONTENT_W - 12 });
+      doc.text(text, MARGIN + 10, y, { width: CONTENT_W - 12, lineGap: 2 });
+      return y + h + 14;
     }
     case "h3": {
-      y = ensureSpace(doc, y, 26, hasWatermark, watermarkText);
+      y = ensureSpace(doc, y, 28, hw, wm);
       doc.fillColor(C.accentLighter).fillOpacity(1).font("Helvetica-Bold").fontSize(11);
-      doc.text(plain, MARGIN, y, { width: CONTENT_W });
-      y = doc.y + 10;
-      break;
+      const h = doc.heightOfString(text, { width: CONTENT_W });
+      doc.text(text, MARGIN, y, { width: CONTENT_W, lineGap: 2 });
+      return y + h + 12;
     }
+
+    // ── Paragraph ─────────────────────────────────────────────────────────────
     case "paragraph": {
-      // Estimate height; if it won't fit, start new page
       doc.font("Helvetica").fontSize(11);
-      const estH = doc.heightOfString(plain, { width: CONTENT_W, lineGap: 3 });
-      if (y + estH > BOTTOM_LIMIT && estH < BOTTOM_LIMIT - 60) {
-        y = addDecoratedPage(doc, hasWatermark, watermarkText);
+      const h = doc.heightOfString(text, { width: CONTENT_W, lineGap: 4 });
+      // If the paragraph fits on the current page, render it; otherwise new page.
+      // For very long paragraphs (> full page), render in place and let PDFKit
+      // handle the overflow — but we must NOT use continued:true.
+      if (y + h > BOTTOM_LIMIT && h < BOTTOM_LIMIT - 60) {
+        y = addContentPage(doc, hw, wm);
       }
-      y = renderInlineSegments(doc, block.segments, MARGIN, y, 11, C.textSecondary, CONTENT_W, 3);
-      y += 4; // extra spacing between paragraphs
-      break;
+      doc.fillColor(C.textSecondary).fillOpacity(1).font("Helvetica").fontSize(11);
+      doc.text(text, MARGIN, y, { width: CONTENT_W, lineGap: 4 });
+      // Use measured height, not doc.y, to avoid PDFKit cursor drift
+      return y + h + 12;
     }
+
+    // ── Bullet list item ──────────────────────────────────────────────────────
     case "bullet": {
-      y = ensureSpace(doc, y, 20, hasWatermark, watermarkText);
-      // Bullet dot
-      doc.fillColor(C.accent).fillOpacity(1).circle(MARGIN + 5, y + 5, 2.5).fill();
-      // Text
       doc.font("Helvetica").fontSize(11);
-      const estH = doc.heightOfString(plain, { width: CONTENT_W - 18, lineGap: 3 });
-      if (y + estH > BOTTOM_LIMIT) {
-        y = addDecoratedPage(doc, hasWatermark, watermarkText);
-        doc.fillColor(C.accent).fillOpacity(1).circle(MARGIN + 5, y + 5, 2.5).fill();
-      }
-      y = renderInlineSegments(doc, block.segments, MARGIN + 14, y, 11, C.textSecondary, CONTENT_W - 18, 3);
-      y += 2;
-      break;
+      const h = doc.heightOfString(text, { width: CONTENT_W - 18, lineGap: 3 });
+      y = ensureSpace(doc, y, h + 6, hw, wm);
+      // Draw bullet dot
+      doc.fillColor(C.accent).fillOpacity(1).circle(MARGIN + 5, y + 6, 2.5).fill();
+      // Draw text
+      doc.fillColor(C.textSecondary).fillOpacity(1).font("Helvetica").fontSize(11);
+      doc.text(text, MARGIN + 14, y, { width: CONTENT_W - 18, lineGap: 3 });
+      return y + h + 6;
     }
+
+    // ── Numbered list item ────────────────────────────────────────────────────
     case "numbered": {
-      y = ensureSpace(doc, y, 20, hasWatermark, watermarkText);
-      const numStr = `${block.index ?? ""}. `;
-      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(11);
-      doc.text(numStr, MARGIN, y, { width: 22, continued: false });
-      const savedY = y;
       doc.font("Helvetica").fontSize(11);
-      const estH = doc.heightOfString(plain, { width: CONTENT_W - 24, lineGap: 3 });
-      if (savedY + estH > BOTTOM_LIMIT) {
-        y = addDecoratedPage(doc, hasWatermark, watermarkText);
-        doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(11);
-        doc.text(numStr, MARGIN, y, { width: 22 });
-      }
-      y = renderInlineSegments(doc, block.segments, MARGIN + 24, savedY, 11, C.textSecondary, CONTENT_W - 24, 3);
-      y += 2;
-      break;
+      const h = doc.heightOfString(text, { width: CONTENT_W - 26, lineGap: 3 });
+      y = ensureSpace(doc, y, h + 6, hw, wm);
+      // Number label
+      const numStr = `${block.index ?? "1"}.`;
+      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(11);
+      doc.text(numStr, MARGIN, y, { width: 20, lineGap: 3 });
+      // Item text — positioned to the right of the number
+      doc.fillColor(C.textSecondary).fillOpacity(1).font("Helvetica").fontSize(11);
+      doc.text(text, MARGIN + 24, y, { width: CONTENT_W - 26, lineGap: 3 });
+      return y + h + 6;
     }
   }
-
-  return y;
 }
 
 // ─── Content cleaner ───────────────────────────────────────────────────────────
 
 function cleanChapterContent(content: string, chapterTitle: string, ebookTitle: string): string {
-  let cleaned = content.trim();
-
+  let c = content.trim();
   // Remove leading heading that duplicates the chapter title
   for (const prefix of [`### ${chapterTitle}`, `## ${chapterTitle}`, `# ${chapterTitle}`, chapterTitle]) {
-    if (cleaned.startsWith(prefix)) {
-      cleaned = cleaned.slice(prefix.length).trim();
-      break;
-    }
+    if (c.startsWith(prefix)) { c = c.slice(prefix.length).trim(); break; }
   }
-  // Remove ebook title if repeated
-  if (cleaned.startsWith(`# ${ebookTitle}`)) cleaned = cleaned.slice(`# ${ebookTitle}`.length).trim();
-  // Remove "Chapitre X :" prefix
-  cleaned = cleaned.replace(/^Chapitre\s+\d+\s*[:\-–]\s*/i, "").trim();
-  // Collapse excessive blank lines
-  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
-
-  return cleaned;
+  if (c.startsWith(`# ${ebookTitle}`)) c = c.slice(`# ${ebookTitle}`.length).trim();
+  c = c.replace(/^Chapitre\s+\d+\s*[:\-–]\s*/i, "").trim();
+  // Collapse 3+ blank lines to 2
+  c = c.replace(/\n{3,}/g, "\n\n");
+  return c;
 }
 
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export async function generateEbookPdf(options: GeneratePdfOptions): Promise<{ key: string; url: string }> {
   const {
-    ebookId,
-    title,
-    subject,
-    language,
-    tone,
-    chapters,
-    hasWatermark,
-    watermarkText = "Generated by EbookAI Studio",
+    ebookId, title, subject, language, tone, chapters,
+    hasWatermark, watermarkText = "Generated by EbookAI Studio",
   } = options;
 
   return new Promise((resolve, reject) => {
+    // autoFirstPage: false — we control every page ourselves
     const doc = new PDFDocument({
       size: "A4",
       margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
       autoFirstPage: false,
+      bufferPages: false,
       info: { Title: title, Subject: subject, Creator: "EbookAI Studio", Producer: "EbookAI Studio" },
     });
 
@@ -349,13 +275,11 @@ export async function generateEbookPdf(options: GeneratePdfOptions): Promise<{ k
         const fileKey = `ebooks/${ebookId}/ebook-${ebookId}.pdf`;
         const { key, url } = await storagePut(fileKey, buf, "application/pdf");
         resolve({ key, url });
-      } catch (err) {
-        reject(err);
-      }
+      } catch (err) { reject(err); }
     });
 
-    // ── Cover ────────────────────────────────────────────────────────────────
-    doc.addPage();
+    // ── Cover page ────────────────────────────────────────────────────────────
+    doc.addPage({ size: "A4", margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
     doc.rect(0, 0, PAGE_W, PAGE_H).fillColor(C.coverBg).fillOpacity(1).fill();
     doc.rect(0, 0, PAGE_W, 8).fillColor(C.accent).fillOpacity(1).fill();
 
@@ -363,75 +287,86 @@ export async function generateEbookPdf(options: GeneratePdfOptions): Promise<{ k
     doc.circle(PAGE_W / 2, 160, 52).fillColor(C.accent).fillOpacity(0.12).fill();
     doc.circle(PAGE_W / 2, 160, 52).strokeColor(C.accent).strokeOpacity(0.35).lineWidth(1).stroke();
 
-    // Title
-    doc.fillColor(C.white).fillOpacity(1).font("Helvetica-Bold").fontSize(30);
-    doc.text(title, MARGIN, 220, { align: "center", width: CONTENT_W });
+    // Title block — measure first, then draw
+    doc.font("Helvetica-Bold").fontSize(30);
     const titleH = doc.heightOfString(title, { width: CONTENT_W });
-    const lineY = 220 + titleH + 18;
+    doc.fillColor(C.white).fillOpacity(1).text(title, MARGIN, 220, { align: "center", width: CONTENT_W });
 
-    // Accent underline
-    doc.moveTo(PAGE_W / 2 - 40, lineY).lineTo(PAGE_W / 2 + 40, lineY).strokeColor(C.accent).strokeOpacity(1).lineWidth(2).stroke();
+    const lineY = 220 + titleH + 18;
+    doc.moveTo(PAGE_W / 2 - 40, lineY).lineTo(PAGE_W / 2 + 40, lineY)
+      .strokeColor(C.accent).strokeOpacity(1).lineWidth(2).stroke();
 
     // Subject
-    doc.fillColor(C.accentLight).fillOpacity(1).font("Helvetica").fontSize(13);
-    doc.text(subject, MARGIN, lineY + 18, { align: "center", width: CONTENT_W });
+    doc.font("Helvetica").fontSize(13);
+    const subjectH = doc.heightOfString(subject, { width: CONTENT_W });
+    doc.fillColor(C.accentLight).fillOpacity(1).text(subject, MARGIN, lineY + 18, { align: "center", width: CONTENT_W });
 
-    // Meta
+    // Metadata
     const toneLabels: Record<string, string> = {
       professional: "Professionnel", casual: "Décontracté",
       academic: "Académique", creative: "Créatif", motivational: "Motivant",
     };
-    doc.fillColor(C.textDim).fillOpacity(1).font("Helvetica").fontSize(10);
-    doc.text(
+    const metaY = lineY + 18 + subjectH + 20;
+    doc.font("Helvetica").fontSize(10);
+    doc.fillColor(C.textDim).fillOpacity(1).text(
       `${language}  ·  ${toneLabels[tone] || tone}  ·  ${chapters.length} chapitre${chapters.length > 1 ? "s" : ""}`,
-      MARGIN, lineY + 68, { align: "center", width: CONTENT_W }
+      MARGIN, metaY, { align: "center", width: CONTENT_W }
     );
 
-    // Branding
-    doc.fillColor(C.separator).fontSize(9).text("EbookAI Studio", MARGIN, PAGE_H - 90, { align: "center", width: CONTENT_W });
+    // Branding footer
+    doc.font("Helvetica").fontSize(9);
+    doc.fillColor(C.separator).fillOpacity(1).text("EbookAI Studio", MARGIN, PAGE_H - 90, { align: "center", width: CONTENT_W });
 
     if (hasWatermark) drawWatermark(doc, watermarkText, 48);
 
-    // ── Table of Contents ────────────────────────────────────────────────────
-    doc.addPage();
+    // ── Table of Contents ─────────────────────────────────────────────────────
+    doc.addPage({ size: "A4", margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
     doc.rect(0, 0, PAGE_W, PAGE_H).fillColor(C.pageBg).fillOpacity(1).fill();
     doc.rect(0, 0, PAGE_W, 6).fillColor(C.accent).fillOpacity(1).fill();
 
-    doc.fillColor(C.white).fillOpacity(1).font("Helvetica-Bold").fontSize(20).text("Table des matières", MARGIN, 50);
-    doc.moveTo(MARGIN, 80).lineTo(PAGE_W - MARGIN, 80).strokeColor(C.accent).strokeOpacity(1).lineWidth(0.8).stroke();
+    doc.fillColor(C.white).fillOpacity(1).font("Helvetica-Bold").fontSize(20);
+    doc.text("Table des matières", MARGIN, 50, { width: CONTENT_W });
+    doc.moveTo(MARGIN, 82).lineTo(PAGE_W - MARGIN, 82)
+      .strokeColor(C.accent).strokeOpacity(1).lineWidth(0.8).stroke();
 
     let tocY = 98;
     for (const ch of chapters) {
-      if (tocY > BOTTOM_LIMIT) {
-        doc.addPage();
+      doc.font("Helvetica").fontSize(11);
+      const rowH = Math.max(doc.heightOfString(ch.title, { width: CONTENT_W - 28 }), 14);
+      if (tocY + rowH > BOTTOM_LIMIT) {
+        doc.addPage({ size: "A4", margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
         doc.rect(0, 0, PAGE_W, PAGE_H).fillColor(C.pageBg).fillOpacity(1).fill();
         doc.rect(0, 0, PAGE_W, 6).fillColor(C.accent).fillOpacity(1).fill();
         tocY = 50;
       }
-      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(10).text(`${ch.chapterNumber}.`, MARGIN, tocY, { width: 24 });
-      doc.fillColor(C.textPrimary).fillOpacity(1).font("Helvetica").fontSize(11).text(ch.title, MARGIN + 28, tocY, { width: CONTENT_W - 28 });
-      const h = doc.heightOfString(ch.title, { width: CONTENT_W - 28 });
-      tocY += Math.max(h, 14) + 10;
+      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(10);
+      doc.text(`${ch.chapterNumber}.`, MARGIN, tocY, { width: 24 });
+      doc.fillColor(C.textPrimary).fillOpacity(1).font("Helvetica").fontSize(11);
+      doc.text(ch.title, MARGIN + 28, tocY, { width: CONTENT_W - 28 });
+      tocY += rowH + 10;
     }
 
-    // ── Chapters ─────────────────────────────────────────────────────────────
+    // ── Chapters ──────────────────────────────────────────────────────────────
     for (const ch of chapters) {
-      // Chapter start page
-      doc.addPage();
-      doc.rect(0, 0, PAGE_W, PAGE_H).fillColor(C.pageBg).fillOpacity(1).fill();
-      doc.rect(0, 0, PAGE_W, 6).fillColor(C.accent).fillOpacity(1).fill();
-      if (hasWatermark) drawWatermark(doc, watermarkText, 32);
+      // Each chapter always starts on a fresh decorated page
+      const startY = addContentPage(doc, hasWatermark, watermarkText);
 
-      // Chapter header
-      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(10).text(`CHAPITRE ${ch.chapterNumber}`, MARGIN, 40);
-      doc.fillColor(C.white).fillOpacity(1).font("Helvetica-Bold").fontSize(20).text(ch.title, MARGIN, 58, { width: CONTENT_W });
+      // Chapter label
+      doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(10);
+      doc.text(`CHAPITRE ${ch.chapterNumber}`, MARGIN, startY - 4, { width: CONTENT_W });
+
+      // Chapter title
+      doc.font("Helvetica-Bold").fontSize(20);
       const chTitleH = doc.heightOfString(ch.title, { width: CONTENT_W });
-      const sepY = 58 + chTitleH + 12;
-      doc.moveTo(MARGIN, sepY).lineTo(PAGE_W - MARGIN, sepY).strokeColor(C.accent).strokeOpacity(1).lineWidth(0.5).stroke();
+      doc.fillColor(C.white).fillOpacity(1).text(ch.title, MARGIN, startY + 12, { width: CONTENT_W });
+
+      const sepY = startY + 12 + chTitleH + 10;
+      doc.moveTo(MARGIN, sepY).lineTo(PAGE_W - MARGIN, sepY)
+        .strokeColor(C.accent).strokeOpacity(1).lineWidth(0.5).stroke();
 
       let y = sepY + 18;
 
-      // Clean and parse content
+      // Parse and render content blocks
       const cleanedContent = cleanChapterContent(ch.content, ch.title, title);
       const blocks = parseMarkdownBlocks(cleanedContent);
 
@@ -439,7 +374,7 @@ export async function generateEbookPdf(options: GeneratePdfOptions): Promise<{ k
         y = renderBlock(doc, block, y, hasWatermark, watermarkText);
       }
 
-      // Page number at bottom
+      // Page number — draw on the last page of this chapter
       doc.fillColor(C.textDim).fillOpacity(1).font("Helvetica").fontSize(9);
       doc.text(`${ch.chapterNumber}`, MARGIN, PAGE_H - 50, { align: "center", width: CONTENT_W });
     }

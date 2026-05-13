@@ -68,3 +68,6 @@
 - [x] Améliorer le parsing du contenu markdown retourné par Claude
 - [x] Améliorer le rendu PDF pour gérer correctement le markdown (titres, listes, gras)
 - [x] Corriger les sauts de page et l'espacement dans le PDF
+
+## Correctif pages blanches PDF (bug signalé)
+- [x] Supprimer les pages blanches entre chapitres causées par PDFKit autoFirstPage ou continued:true
