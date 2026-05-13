@@ -61,3 +61,10 @@
 - [x] Tests vitest pour ebook.create (validation crédits/plan)
 - [x] Tests vitest pour subscription.getMyPlan
 - [x] Tests vitest pour webhook Stripe
+
+## Corrections génération LLM (bug signalé)
+- [x] Améliorer le prompt système pour éviter les répétitions et superpositions de phrases
+- [x] Ajouter un prompt de plan global avant la génération des chapitres (cohérence)
+- [x] Améliorer le parsing du contenu markdown retourné par Claude
+- [x] Améliorer le rendu PDF pour gérer correctement le markdown (titres, listes, gras)
+- [x] Corriger les sauts de page et l'espacement dans le PDF

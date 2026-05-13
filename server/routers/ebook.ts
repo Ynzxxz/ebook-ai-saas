@@ -17,6 +17,86 @@ import { protectedProcedure, router } from "../_core/trpc";
 
 const toneEnum = z.enum(["professional", "casual", "academic", "creative", "motivational"]);
 
+const TONE_LABELS: Record<string, string> = {
+  professional: "professionnel et formel",
+  casual: "décontracté et accessible",
+  academic: "académique et rigoureux",
+  creative: "créatif et engageant",
+  motivational: "motivant et inspirant",
+};
+
+// ─── Prompt helpers ────────────────────────────────────────────────────────────
+
+function buildOutlinePrompt(title: string, subject: string, chapterCount: number, language: string, toneDesc: string): string {
+  return `Tu es un expert en rédaction d'ebooks professionnels. Ta mission est de créer un plan structuré pour un ebook.
+
+EBOOK À PLANIFIER :
+- Titre : "${title}"
+- Sujet : "${subject}"
+- Nombre de chapitres : EXACTEMENT ${chapterCount} (ni plus, ni moins)
+- Langue : ${language}
+- Ton : ${toneDesc}
+
+RÈGLES STRICTES :
+1. Génère EXACTEMENT ${chapterCount} chapitres numérotés de 1 à ${chapterCount}
+2. Chaque titre de chapitre doit être unique, précis et différent des autres
+3. Les chapitres doivent progresser logiquement du plus simple au plus complexe
+4. Les titres doivent être concis (5 à 10 mots maximum)
+5. Ne répète jamais le titre de l'ebook dans les titres de chapitres
+
+Réponds UNIQUEMENT avec le JSON demandé, sans texte avant ni après.`;
+}
+
+function buildChapterPrompt(
+  ebookTitle: string,
+  subject: string,
+  language: string,
+  toneDesc: string,
+  chapterNumber: number,
+  chapterTitle: string,
+  totalChapters: number,
+  allChapterTitles: string[]
+): string {
+  const otherChapters = allChapterTitles
+    .filter((_, i) => i !== chapterNumber - 1)
+    .map((t, i) => `  - Chapitre ${i < chapterNumber - 1 ? i + 1 : i + 2} : ${t}`)
+    .join("\n");
+
+  return `Tu es un expert en rédaction d'ebooks professionnels. Tu rédiges le chapitre ${chapterNumber} sur ${totalChapters} d'un ebook.
+
+CONTEXTE DE L'EBOOK :
+- Titre de l'ebook : "${ebookTitle}"
+- Sujet global : "${subject}"
+- Langue : ${language}
+- Ton : ${toneDesc}
+
+CHAPITRE À RÉDIGER :
+- Numéro : ${chapterNumber} / ${totalChapters}
+- Titre : "${chapterTitle}"
+
+AUTRES CHAPITRES DE L'EBOOK (pour éviter les répétitions) :
+${otherChapters}
+
+RÈGLES STRICTES DE RÉDACTION :
+1. Rédige UNIQUEMENT le contenu de CE chapitre, pas des autres
+2. Ne répète PAS le titre du chapitre en début de texte (il sera ajouté automatiquement)
+3. Ne répète PAS le titre de l'ebook dans le texte
+4. N'écris PAS "Chapitre X" ou "Introduction" comme premier mot
+5. Commence directement par le contenu substantiel
+6. Structure le contenu avec des sous-titres (## Sous-titre) pour organiser les idées
+7. Chaque sous-section doit apporter une information nouvelle et distincte
+8. Évite les répétitions de phrases ou d'idées au sein du même chapitre
+9. Rédige entre 500 et 800 mots de contenu dense et utile
+10. Termine par une transition naturelle vers le chapitre suivant (si ce n'est pas le dernier)
+
+FORMAT DE SORTIE :
+- Utilise ## pour les sous-titres de sections
+- Utilise des paragraphes bien séparés (ligne vide entre chaque)
+- N'utilise PAS de listes à puces (- ou *) — rédige en prose
+- N'utilise PAS de texte en gras (**texte**) — le PDF le gérera
+- Rédige directement en ${language}`;
+}
+
 export const ebookRouter = router({
   // ─── Create & start generation ─────────────────────────────────────────────
   create: protectedProcedure
@@ -53,12 +133,9 @@ export const ebookRouter = router({
           });
         }
       } else if (plan === "starter") {
-        // Reset monthly credits if needed
         const now = new Date();
         const resetDate = user.creditsReset;
-        if (!resetDate || now > resetDate) {
-          // Credits will be reset — handled in generate step
-        } else if (user.creditsUsed >= limits.max) {
+        if (resetDate && now <= resetDate && user.creditsUsed >= limits.max) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Vous avez atteint votre limite mensuelle de 20 ebooks. Passez au plan Pro pour un accès illimité.",
@@ -95,36 +172,18 @@ export const ebookRouter = router({
       await updateEbook(input.ebookId, { status: "generating" });
 
       try {
-        const toneLabels: Record<string, string> = {
-          professional: "professionnel et formel",
-          casual: "décontracté et accessible",
-          academic: "académique et rigoureux",
-          creative: "créatif et engageant",
-          motivational: "motivant et inspirant",
-        };
-        const toneDesc = toneLabels[ebook.tone] || ebook.tone;
+        const toneDesc = TONE_LABELS[ebook.tone] || ebook.tone;
 
-        // Step 1: Generate chapter titles outline
+        // ── Step 1 : Generate chapter outline (structured JSON) ────────────────
         const outlineResponse = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: `Tu es un expert en rédaction d'ebooks. Tu génères des plans structurés et détaillés. Réponds uniquement en JSON valide.`,
+              content: `Tu es un expert en rédaction d'ebooks. Tu génères des plans structurés. Réponds UNIQUEMENT en JSON valide, sans markdown ni texte autour.`,
             },
             {
               role: "user",
-              content: `Crée un plan détaillé pour un ebook intitulé "${ebook.title}" sur le sujet "${ebook.subject}".
-L'ebook doit avoir exactement ${ebook.chapterCount} chapitres.
-Langue : ${ebook.language}
-Ton : ${toneDesc}
-
-Réponds avec ce JSON exact (sans markdown) :
-{
-  "chapters": [
-    { "number": 1, "title": "Titre du chapitre 1" },
-    { "number": 2, "title": "Titre du chapitre 2" }
-  ]
-}`,
+              content: buildOutlinePrompt(ebook.title, ebook.subject, ebook.chapterCount, ebook.language, toneDesc),
             },
           ],
           response_format: {
@@ -160,40 +219,54 @@ Réponds avec ce JSON exact (sans markdown) :
 
         const outline = JSON.parse(outlineContent) as { chapters: { number: number; title: string }[] };
 
-        // Step 2: Generate content for each chapter
+        // Validate outline integrity
+        if (!outline.chapters || outline.chapters.length !== ebook.chapterCount) {
+          throw new Error(
+            `Le plan généré contient ${outline.chapters?.length ?? 0} chapitres au lieu de ${ebook.chapterCount}`
+          );
+        }
+
+        const allChapterTitles = outline.chapters.map((c) => c.title);
+
+        // ── Step 2 : Generate content for each chapter ─────────────────────────
         for (const ch of outline.chapters) {
           const chapterResponse = await invokeLLM({
             messages: [
               {
                 role: "system",
-                content: `Tu es un expert en rédaction d'ebooks. Tu rédiges des chapitres complets, bien structurés et engageants. 
-Ton : ${toneDesc}
-Langue : ${ebook.language}
-Utilise des sous-titres (##) pour structurer le contenu. Écris au minimum 600 mots par chapitre.`,
+                content: `Tu es un expert en rédaction d'ebooks professionnels. Tu rédiges des chapitres clairs, structurés et sans répétitions. Tu rédiges TOUJOURS en ${ebook.language}.`,
               },
               {
                 role: "user",
-                content: `Rédige le chapitre ${ch.number} de l'ebook "${ebook.title}".
-Titre du chapitre : "${ch.title}"
-Sujet global de l'ebook : ${ebook.subject}
-
-Rédige un chapitre complet et détaillé avec introduction, développement structuré en sous-sections et conclusion du chapitre.`,
+                content: buildChapterPrompt(
+                  ebook.title,
+                  ebook.subject,
+                  ebook.language,
+                  toneDesc,
+                  ch.number,
+                  ch.title,
+                  ebook.chapterCount,
+                  allChapterTitles
+                ),
               },
             ],
           });
 
-          const chapterContent = chapterResponse.choices[0]?.message?.content as string | null;
-          if (!chapterContent) throw new Error(`Impossible de générer le chapitre ${ch.number}`);
+          const rawContent = chapterResponse.choices[0]?.message?.content as string | null;
+          if (!rawContent) throw new Error(`Impossible de générer le chapitre ${ch.number}`);
+
+          // Clean content: remove any accidental title repetition at start
+          const cleanContent = cleanChapterContent(rawContent, ch.title, ebook.title);
 
           await createChapter({
             ebookId: input.ebookId,
             chapterNumber: ch.number,
             title: ch.title,
-            content: chapterContent,
+            content: cleanContent,
           });
         }
 
-        // Step 3: Generate PDF
+        // ── Step 3 : Generate PDF ──────────────────────────────────────────────
         const ebookWithChapters = await getEbookWithChapters(input.ebookId);
         if (!ebookWithChapters) throw new Error("Ebook introuvable après génération");
 
@@ -208,8 +281,6 @@ Rédige un chapitre complet et détaillé avec introduction, développement stru
         });
 
         await updateEbook(input.ebookId, { status: "completed", pdfKey: key, pdfUrl: url });
-
-        // Increment credits
         await incrementUserCredits(ctx.user.id);
 
         return { success: true, pdfUrl: url };
@@ -235,3 +306,69 @@ Rédige un chapitre complet et détaillé avec introduction, développement stru
       return ebook;
     }),
 });
+
+// ─── Content cleaning helpers ──────────────────────────────────────────────────
+
+/**
+ * Remove accidental repetitions of the chapter title or ebook title
+ * that Claude sometimes inserts at the beginning of the content.
+ */
+function cleanChapterContent(content: string, chapterTitle: string, ebookTitle: string): string {
+  let cleaned = content.trim();
+
+  // Remove leading markdown heading that duplicates the chapter title
+  const titleVariants = [
+    `# ${chapterTitle}`,
+    `## ${chapterTitle}`,
+    `### ${chapterTitle}`,
+    chapterTitle,
+  ];
+  for (const variant of titleVariants) {
+    if (cleaned.startsWith(variant)) {
+      cleaned = cleaned.slice(variant.length).trim();
+      break;
+    }
+  }
+
+  // Remove leading ebook title if Claude repeated it
+  if (cleaned.startsWith(`# ${ebookTitle}`)) {
+    cleaned = cleaned.slice(`# ${ebookTitle}`.length).trim();
+  }
+
+  // Remove "Chapitre X :" prefix patterns
+  cleaned = cleaned.replace(/^Chapitre\s+\d+\s*[:\-–]\s*/i, "").trim();
+
+  // Collapse excessive blank lines (more than 2 consecutive)
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+
+  // Remove duplicate consecutive sentences (simple heuristic)
+  cleaned = removeDuplicateSentences(cleaned);
+
+  return cleaned;
+}
+
+/**
+ * Detect and remove immediately repeated sentences within a paragraph.
+ */
+function removeDuplicateSentences(text: string): string {
+  const paragraphs = text.split(/\n\n+/);
+  const cleanedParagraphs = paragraphs.map((para) => {
+    // Split on sentence boundaries
+    const sentences = para.split(/(?<=[.!?])\s+/);
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const sentence of sentences) {
+      const normalized = sentence.trim().toLowerCase().replace(/\s+/g, " ");
+      if (normalized.length < 10) {
+        unique.push(sentence);
+        continue;
+      }
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        unique.push(sentence);
+      }
+    }
+    return unique.join(" ");
+  });
+  return cleanedParagraphs.join("\n\n");
+}
