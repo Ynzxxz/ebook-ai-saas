@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { chapters, ebooks, InsertChapter, InsertEbook, InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -55,46 +55,26 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserPlan(userId: number, data: {
-  plan: "free" | "starter" | "pro";
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripePriceId?: string;
-  stripeCurrentPeriodEnd?: Date;
-  creditsUsed?: number;
-  creditsReset?: Date;
-}) {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(users).set(data).where(eq(users.id, userId));
-}
-
-export async function updateUserByStripeCustomerId(stripeCustomerId: string, data: Partial<{
-  plan: "free" | "starter" | "pro";
-  stripeSubscriptionId: string;
-  stripePriceId: string;
-  stripeCurrentPeriodEnd: Date;
-  creditsUsed: number;
-  creditsReset: Date;
-}>) {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(users).set(data).where(eq(users.stripeCustomerId, stripeCustomerId));
-}
-
-export async function getUserByStripeCustomerId(stripeCustomerId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function incrementUserCredits(userId: number) {
+export async function addUserCredits(userId: number, amount: number) {
   const db = await getDb();
   if (!db) return;
   const user = await getUserById(userId);
   if (!user) return;
-  await db.update(users).set({ creditsUsed: user.creditsUsed + 1 }).where(eq(users.id, userId));
+  await db.update(users).set({ creditsBalance: user.creditsBalance + amount }).where(eq(users.id, userId));
+}
+
+export async function deductUserCredits(userId: number, amount: number) {
+  const db = await getDb();
+  if (!db) return;
+  const user = await getUserById(userId);
+  if (!user) return;
+  const newBalance = Math.max(0, user.creditsBalance - amount);
+  await db.update(users).set({ creditsBalance: newBalance }).where(eq(users.id, userId));
+}
+
+export async function getUserCreditsBalance(userId: number) {
+  const user = await getUserById(userId);
+  return user?.creditsBalance ?? 0;
 }
 
 // ─── Ebooks ───────────────────────────────────────────────────────────────────

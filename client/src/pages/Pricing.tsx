@@ -1,94 +1,85 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import { Check, Sparkles, Zap, Crown, Loader2 } from "lucide-react";
+import { Check, Sparkles, Zap, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-const PLANS = [
+const PACKS = [
   {
-    key: "free" as const,
-    name: "Gratuit",
-    price: "0€",
-    period: "",
-    desc: "Pour découvrir la plateforme sans engagement",
+    key: "starter" as const,
+    name: "Pack Starter",
+    price: "5€",
+    generations: "5 générations",
+    desc: "Parfait pour commencer",
     features: [
-      "3 ebooks au total",
-      "Export PDF avec filigrane",
-      "5 chapitres maximum",
+      "5 générations d'ebooks",
+      "Export PDF de qualité",
+      "Jusqu'à 30 chapitres par ebook",
       "Toutes les langues",
-      "Support communautaire",
+      "Valide 30 jours après achat",
     ],
-    cta: "Commencer gratuitement",
+    cta: "Acheter maintenant",
     highlight: false,
     badge: null,
     icon: Sparkles,
-    color: "text-muted-foreground",
-  },
-  {
-    key: "starter" as const,
-    name: "Starter",
-    price: "9€",
-    period: "/mois",
-    desc: "Pour les créateurs de contenu réguliers",
-    features: [
-      "20 ebooks par mois",
-      "Export PDF sans filigrane",
-      "15 chapitres maximum",
-      "Toutes les langues",
-      "Support email",
-      "Réinitialisation mensuelle",
-    ],
-    cta: "Choisir Starter",
-    highlight: true,
-    badge: "Populaire",
-    icon: Zap,
     color: "text-blue-400",
+    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Starter%205%20generations&amount=5.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
   },
   {
     key: "pro" as const,
-    name: "Pro",
-    price: "29€",
-    period: "/mois",
-    desc: "Pour les professionnels et les équipes",
+    name: "Pack Pro",
+    price: "15€",
+    generations: "20 générations",
+    desc: "Pour les créateurs réguliers",
     features: [
-      "Ebooks illimités",
-      "Export PDF + EPUB",
-      "30 chapitres maximum",
+      "20 générations d'ebooks",
+      "Export PDF de qualité",
+      "Jusqu'à 30 chapitres par ebook",
       "Toutes les langues",
-      "Support prioritaire",
-      "Accès anticipé aux nouvelles fonctionnalités",
+      "Valide 30 jours après achat",
     ],
-    cta: "Choisir Pro",
+    cta: "Acheter maintenant",
+    highlight: true,
+    badge: "Populaire",
+    icon: Zap,
+    color: "text-yellow-400",
+    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Pro%2020%20generations&amount=15.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
+  },
+  {
+    key: "unlimited" as const,
+    name: "Pack Illimité",
+    price: "25€",
+    generations: "Illimité 30j",
+    desc: "Pour les professionnels",
+    features: [
+      "Générations illimitées pendant 30 jours",
+      "Export PDF de qualité",
+      "Jusqu'à 30 chapitres par ebook",
+      "Toutes les langues",
+      "Valide 30 jours après achat",
+    ],
+    cta: "Acheter maintenant",
     highlight: false,
     badge: null,
     icon: Crown,
-    color: "text-yellow-400",
+    color: "text-purple-400",
+    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Illimite%2030%20jours&amount=25.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
   },
 ];
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
 
-  const checkoutMutation = trpc.subscription.createCheckout.useMutation({
-    onSuccess: ({ url }) => {
-      if (url) {
-        toast.info("Redirection vers le paiement...");
-        window.open(url, "_blank");
-      }
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const handlePlanClick = (planKey: "starter" | "pro") => {
+  const handlePackClick = (paypalLink: string) => {
     if (!isAuthenticated) {
       window.location.href = getLoginUrl();
       return;
     }
-    checkoutMutation.mutate({ planKey });
+    toast.info("Redirection vers PayPal...");
+    window.open(paypalLink, "_blank");
   };
 
   return (
@@ -102,77 +93,84 @@ export default function Pricing() {
             transition={{ duration: 0.5 }}
             className="text-center mb-16"
           >
-            <Badge className="mb-4 bg-primary/15 text-primary border-primary/30 px-4 py-1.5">
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-              Tarifs
-            </Badge>
-            <h1 className="text-5xl font-display font-bold mb-4">
-              Choisissez votre plan
-            </h1>
-            <p className="text-muted-foreground text-xl max-w-xl mx-auto">
-              Commencez gratuitement, évoluez selon vos besoins. Annulez à tout moment.
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Packs de Générations</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Choisissez le pack qui vous convient et commencez à générer vos ebooks dès maintenant.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {PLANS.map((plan, i) => {
-              const PlanIcon = plan.icon;
+          {/* Free tier info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-12 p-6 bg-card rounded-lg border border-border text-center"
+          >
+            <p className="text-sm text-muted-foreground mb-2">Vous avez accès à</p>
+            <p className="text-2xl font-bold text-accent">3 générations gratuites</p>
+            <p className="text-sm text-muted-foreground mt-2">Pas de carte bancaire requise</p>
+          </motion.div>
+
+          {/* Pricing cards */}
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {PACKS.map((pack, idx) => {
+              const Icon = pack.icon;
               return (
                 <motion.div
-                  key={plan.key}
-                  initial={{ opacity: 0, y: 24 }}
+                  key={pack.key}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className={`relative glass-card p-8 flex flex-col ${plan.highlight ? "border-primary/50 glow-violet" : ""}`}
+                  transition={{ duration: 0.5, delay: 0.2 + idx * 0.1 }}
+                  className={`relative rounded-lg border transition-all duration-300 ${
+                    pack.highlight
+                      ? "border-accent bg-accent/5 md:scale-105 shadow-lg shadow-accent/20"
+                      : "border-border bg-card hover:border-accent/50"
+                  }`}
                 >
-                  {plan.badge && (
+                  {pack.badge && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground px-4 py-1">{plan.badge}</Badge>
+                      <Badge className="bg-accent text-white">{pack.badge}</Badge>
                     </div>
                   )}
 
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <PlanIcon className={`w-5 h-5 ${plan.color}`} />
-                      <h3 className="font-display font-bold text-xl">{plan.name}</h3>
+                  <div className="p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <Icon className={`w-6 h-6 ${pack.color}`} />
+                      <h3 className="text-2xl font-bold">{pack.name}</h3>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">{plan.desc}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-display font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground text-lg">{plan.period}</span>
+
+                    {/* Price */}
+                    <div className="mb-6">
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className="text-4xl font-bold">{pack.price}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{pack.generations}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{pack.desc}</p>
+                    </div>
+
+                    {/* CTA Button */}
+                    <Button
+                      onClick={() => handlePackClick(pack.paypalLink)}
+                      className={`w-full mb-8 ${
+                        pack.highlight
+                          ? "bg-accent hover:bg-accent/90 text-white"
+                          : "bg-primary hover:bg-primary/90 text-white"
+                      }`}
+                    >
+                      {pack.cta}
+                    </Button>
+
+                    {/* Features */}
+                    <div className="space-y-3">
+                      {pack.features.map((feature, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <Check className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                          <span className="text-sm text-foreground">{feature}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-
-                  <ul className="space-y-3 mb-8 flex-1">
-                    {plan.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2.5 text-sm">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-foreground/80">{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {plan.key === "free" ? (
-                    <Button
-                      className={`w-full ${plan.highlight ? "bg-primary hover:bg-primary/90 glow-violet" : ""}`}
-                      variant={plan.highlight ? "default" : "outline"}
-                      asChild
-                    >
-                      <a href={isAuthenticated ? "/dashboard" : getLoginUrl()}>{plan.cta}</a>
-                    </Button>
-                  ) : (
-                    <Button
-                      className={`w-full ${plan.highlight ? "bg-primary hover:bg-primary/90 glow-violet" : ""}`}
-                      variant={plan.highlight ? "default" : "outline"}
-                      onClick={() => handlePlanClick(plan.key)}
-                      disabled={checkoutMutation.isPending}
-                    >
-                      {checkoutMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : null}
-                      {plan.cta}
-                    </Button>
-                  )}
                 </motion.div>
               );
             })}
@@ -182,22 +180,35 @@ export default function Pricing() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="mt-20 max-w-2xl mx-auto"
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="max-w-2xl mx-auto"
           >
-            <h2 className="text-2xl font-display font-bold text-center mb-8">Questions fréquentes</h2>
-            <div className="space-y-4">
-              {[
-                { q: "Puis-je annuler mon abonnement ?", a: "Oui, vous pouvez annuler à tout moment depuis votre dashboard. Votre abonnement reste actif jusqu'à la fin de la période en cours." },
-                { q: "Les ebooks générés m'appartiennent-ils ?", a: "Absolument. Tous les ebooks générés avec EbookAI Studio vous appartiennent entièrement." },
-                { q: "Que se passe-t-il si je dépasse ma limite ?", a: "Vous serez notifié et pourrez passer à un plan supérieur pour continuer à générer des ebooks." },
-                { q: "Quelle est la qualité du contenu généré ?", a: "Nous utilisons Claude Sonnet d'Anthropic, l'un des modèles les plus performants du marché, pour garantir un contenu de haute qualité." },
-              ].map((item) => (
-                <div key={item.q} className="glass-card p-5">
-                  <h3 className="font-semibold mb-2">{item.q}</h3>
-                  <p className="text-sm text-muted-foreground">{item.a}</p>
-                </div>
-              ))}
+            <h2 className="text-2xl font-bold mb-8 text-center">Questions fréquentes</h2>
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold mb-2">Comment fonctionne le système de crédits ?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Chaque génération d'ebook consomme 1 crédit. Vous pouvez acheter des packs pour ajouter des crédits à votre compte.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Mes crédits expirent-ils ?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Les crédits achetés restent valides pendant 30 jours après l'achat. Passé ce délai, ils sont supprimés.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Puis-je annuler mon achat ?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Oui, vous pouvez demander un remboursement dans les 14 jours suivant votre achat. Contactez notre support.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Quels moyens de paiement acceptez-vous ?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Nous acceptons PayPal, qui supporte les cartes de crédit, les portefeuilles numériques et les virements bancaires.
+                </p>
+              </div>
             </div>
           </motion.div>
         </div>

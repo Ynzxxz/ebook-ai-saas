@@ -2,12 +2,11 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import {
   BookOpen, Sparkles, Download, Clock, CheckCircle2,
-  AlertCircle, Loader2, Plus, Crown, Zap, ArrowRight, RefreshCw
+  AlertCircle, Loader2, Plus, Zap, ArrowRight, RefreshCw
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
@@ -21,14 +20,11 @@ const STATUS_CONFIG = {
   error: { label: "Erreur", color: "bg-red-500/20 text-red-400 border-red-500/30", icon: AlertCircle },
 };
 
-const PLAN_ICONS = { free: Sparkles, starter: Zap, pro: Crown };
-const PLAN_COLORS = { free: "text-muted-foreground", starter: "text-blue-400", pro: "text-yellow-400" };
-
 export default function Dashboard() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: planInfo, isLoading: planLoading, refetch: refetchPlan } = trpc.subscription.getMyPlan.useQuery(
+  const { data: creditsData, isLoading: creditsLoading, refetch: refetchCredits } = trpc.ebook.getCreditsBalance.useQuery(
     undefined,
     { enabled: isAuthenticated }
   );
@@ -37,27 +33,15 @@ export default function Dashboard() {
     { enabled: isAuthenticated }
   );
 
-  const checkoutMutation = trpc.subscription.createCheckout.useMutation({
-    onSuccess: ({ url }) => {
-      if (url) window.open(url, "_blank");
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const portalMutation = trpc.subscription.createPortal.useMutation({
-    onSuccess: ({ url }) => { window.open(url, "_blank"); },
-    onError: (err) => toast.error(err.message),
-  });
-
-  // Check for checkout success
+  // Check for payment success
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      toast.success("Abonnement activé avec succès !");
-      setTimeout(() => { refetchPlan(); refetchEbooks(); }, 2000);
+    if (params.get("payment") === "success") {
+      toast.success("Crédits ajoutés avec succès !");
+      setTimeout(() => { refetchCredits(); }, 1000);
       window.history.replaceState({}, "", "/dashboard");
     }
-  }, []);
+  }, [refetchCredits]);
 
   if (authLoading) {
     return (
@@ -78,8 +62,7 @@ export default function Dashboard() {
     );
   }
 
-  const plan = planInfo?.plan ?? "free";
-  const PlanIcon = PLAN_ICONS[plan] || Sparkles;
+  const balance = creditsData?.balance ?? 0;
 
   return (
     <div className="min-h-screen">
@@ -95,11 +78,12 @@ export default function Dashboard() {
           >
             <div>
               <h1 className="text-3xl font-display font-bold">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Gérez vos ebooks et votre abonnement</p>
+              <p className="text-muted-foreground mt-1">Gérez vos ebooks et vos crédits</p>
             </div>
             <Button
               className="bg-primary hover:bg-primary/90 glow-violet gap-2"
               onClick={() => navigate("/generate")}
+              disabled={balance <= 0}
             >
               <Plus className="w-4 h-4" />
               Nouvel ebook
@@ -111,69 +95,38 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
           >
-            {/* Plan Card */}
-            <Card className="glass-card border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Plan actuel</span>
-                  <PlanIcon className={`w-4 h-4 ${PLAN_COLORS[plan]}`} />
-                </div>
-                <div className="text-2xl font-display font-bold capitalize">{planInfo?.planName ?? "Gratuit"}</div>
-                {plan !== "pro" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 p-0 h-auto text-primary hover:text-primary/80 text-xs gap-1"
-                    onClick={() => checkoutMutation.mutate({ planKey: plan === "free" ? "starter" : "pro" })}
-                    disabled={checkoutMutation.isPending}
-                  >
-                    {checkoutMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRight className="w-3 h-3" />}
-                    Passer au plan {plan === "free" ? "Starter" : "Pro"}
-                  </Button>
-                )}
-                {plan !== "free" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 p-0 h-auto text-muted-foreground hover:text-foreground text-xs gap-1"
-                    onClick={() => portalMutation.mutate()}
-                    disabled={portalMutation.isPending}
-                  >
-                    Gérer l'abonnement
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Credits Card */}
-            <Card className="glass-card border-border/50">
+            <Card className={`glass-card border-border/50 ${balance <= 0 ? "border-red-500/30 bg-red-500/5" : ""}`}>
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Ebooks générés</span>
-                  <BookOpen className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">Crédits disponibles</span>
+                  <Zap className={`w-4 h-4 ${balance > 0 ? "text-yellow-400" : "text-red-400"}`} />
                 </div>
-                <div className="text-2xl font-display font-bold">{planInfo?.creditsUsed ?? 0}</div>
-                {planInfo?.creditsRemaining !== null && planInfo?.creditsRemaining !== undefined ? (
-                  <p className="text-xs text-muted-foreground mt-1">{planInfo.creditsRemaining} restant{planInfo.creditsRemaining > 1 ? "s" : ""}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">Illimité</p>
+                <div className="text-3xl font-display font-bold">{balance}</div>
+                <p className="text-xs text-muted-foreground mt-1">1 crédit = 1 ebook</p>
+                {balance <= 0 && (
+                  <Button
+                    size="sm"
+                    className="mt-3 w-full bg-accent hover:bg-accent/90 text-white gap-1"
+                    onClick={() => navigate("/pricing")}
+                  >
+                    Acheter des crédits <ArrowRight className="w-3 h-3" />
+                  </Button>
                 )}
               </CardContent>
             </Card>
 
-            {/* Quick action */}
-            <Card
-              className="glass-card border-primary/20 cursor-pointer hover:border-primary/40 transition-all duration-200 group"
-              onClick={() => navigate("/generate")}
-            >
-              <CardContent className="p-5 flex flex-col items-center justify-center text-center h-full min-h-[100px]">
-                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center mb-3 group-hover:bg-primary/25 transition-colors">
-                  <Sparkles className="w-5 h-5 text-primary" />
+            {/* Ebooks Count Card */}
+            <Card className="glass-card border-border/50">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-muted-foreground">Ebooks créés</span>
+                  <BookOpen className="w-4 h-4 text-blue-400" />
                 </div>
-                <span className="text-sm font-medium">Créer un ebook</span>
-                <span className="text-xs text-muted-foreground mt-1">Nouveau projet</span>
+                <div className="text-3xl font-display font-bold">{ebooks?.length ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">Tous les ebooks</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -185,75 +138,93 @@ export default function Dashboard() {
             transition={{ duration: 0.4, delay: 0.2 }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-display font-semibold">Mes ebooks</h2>
-              <Button variant="ghost" size="sm" onClick={() => refetchEbooks()} className="gap-1 text-muted-foreground">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Actualiser
+              <h2 className="text-xl font-display font-bold">Mes ebooks</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetchEbooks()}
+                disabled={ebooksLoading}
+              >
+                <RefreshCw className={`w-4 h-4 ${ebooksLoading ? "animate-spin" : ""}`} />
               </Button>
             </div>
 
             {ebooksLoading ? (
-              <div className="flex items-center justify-center py-16">
+              <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
-            ) : !ebooks || ebooks.length === 0 ? (
-              <div className="glass-card p-12 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <BookOpen className="w-8 h-8 text-primary/50" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Aucun ebook pour l'instant</h3>
-                <p className="text-muted-foreground text-sm mb-6">Créez votre premier ebook en quelques minutes</p>
-                <Button className="bg-primary gap-2" onClick={() => navigate("/generate")}>
-                  <Plus className="w-4 h-4" />
-                  Créer mon premier ebook
-                </Button>
-              </div>
-            ) : (
+            ) : ebooks && ebooks.length > 0 ? (
               <div className="space-y-3">
-                {ebooks.map((ebook, i) => {
-                  const status = STATUS_CONFIG[ebook.status] || STATUS_CONFIG.pending;
-                  const StatusIcon = status.icon;
+                {ebooks.map((ebook, idx) => {
+                  const StatusIcon = STATUS_CONFIG[ebook.status as keyof typeof STATUS_CONFIG]?.icon || AlertCircle;
+                  const statusConfig = STATUS_CONFIG[ebook.status as keyof typeof STATUS_CONFIG];
+
                   return (
                     <motion.div
                       key={ebook.id}
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.3 }}
-                      className="glass-card p-4 flex items-center gap-4 hover:border-border/80 transition-all duration-200 cursor-pointer group"
-                      onClick={() => navigate(`/ebook/${ebook.id}`)}
+                      transition={{ duration: 0.3, delay: idx * 0.05 }}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate group-hover:text-primary transition-colors">{ebook.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {ebook.chapterCount} chapitres · {ebook.language} · {new Date(ebook.createdAt).toLocaleDateString("fr-FR")}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <Badge className={`text-xs ${status.color}`}>
-                          <StatusIcon className={`w-3 h-3 mr-1 ${ebook.status === "generating" ? "animate-spin" : ""}`} />
-                          {status.label}
-                        </Badge>
-                        {ebook.status === "completed" && ebook.pdfUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(ebook.pdfUrl!, "_blank");
-                            }}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <Card className="glass-card border-border/50 hover:border-accent/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/ebook/${ebook.id}`)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold truncate">{ebook.title}</h3>
+                              <p className="text-sm text-muted-foreground truncate">{ebook.subject}</p>
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <span className="text-xs bg-background px-2 py-1 rounded">
+                                  {ebook.chapterCount} chapitres
+                                </span>
+                                <span className="text-xs bg-background px-2 py-1 rounded">
+                                  {ebook.language}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border ${statusConfig?.color}`}>
+                                <StatusIcon className="w-3 h-3" />
+                                {statusConfig?.label}
+                              </div>
+                              {ebook.status === "completed" && ebook.pdfUrl && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (ebook.pdfUrl) window.open(ebook.pdfUrl, "_blank");
+                                  }}
+                                >
+                                  <Download className="w-3 h-3" />
+                                  PDF
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   );
                 })}
               </div>
+            ) : (
+              <Card className="glass-card border-border/50">
+                <CardContent className="p-12 text-center">
+                  <BookOpen className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">Aucun ebook créé pour le moment</p>
+                  <Button
+                    onClick={() => navigate("/generate")}
+                    disabled={balance <= 0}
+                    className="bg-primary hover:bg-primary/90 gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Créer votre premier ebook
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </motion.div>
         </div>

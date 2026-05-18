@@ -5,37 +5,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/Navbar";
-import { Sparkles, BookOpen, Loader2, CheckCircle2, ArrowLeft, AlertCircle } from "lucide-react";
+import { Sparkles, ArrowLeft, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useState } from "react";
 
-const LANGUAGES = ["Français", "English", "Español", "Deutsch", "Italiano", "Português", "中文", "日本語"];
+const LANGUAGES = ["Français", "Anglais", "Espagnol", "Allemand", "Italien", "Portugais", "Chinois", "Japonais"];
 const TONES = [
   { value: "professional", label: "Professionnel", desc: "Formel et structuré" },
-  { value: "casual", label: "Décontracté", desc: "Accessible et convivial" },
-  { value: "academic", label: "Académique", desc: "Rigoureux et documenté" },
-  { value: "creative", label: "Créatif", desc: "Imaginatif et engageant" },
+  { value: "casual", label: "Décontracté", desc: "Amical et accessible" },
+  { value: "academic", label: "Académique", desc: "Rigoureux et détaillé" },
+  { value: "creative", label: "Créatif", desc: "Engageant et original" },
   { value: "motivational", label: "Motivant", desc: "Inspirant et dynamique" },
 ];
-
-type GenerationStep = "form" | "generating" | "done" | "error";
 
 export default function Generate() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-
-  const [step, setStep] = useState<GenerationStep>("form");
-  const [currentChapter, setCurrentChapter] = useState(0);
-  const [totalChapters, setTotalChapters] = useState(0);
+  const [step, setStep] = useState<"form" | "generating" | "success" | "error">("form");
   const [ebookId, setEbookId] = useState<number | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [totalChapters, setTotalChapters] = useState(0);
+  const [currentChapter, setCurrentChapter] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -44,8 +40,6 @@ export default function Generate() {
     language: "Français",
     tone: "professional" as "professional" | "casual" | "academic" | "creative" | "motivational",
   });
-
-  const planQuery = trpc.subscription.getMyPlan.useQuery(undefined, { enabled: isAuthenticated });
 
   const createMutation = trpc.ebook.create.useMutation();
   const generateMutation = trpc.ebook.generate.useMutation();
@@ -79,13 +73,12 @@ export default function Generate() {
       const result = await generateMutation.mutateAsync({ ebookId: newId });
       clearInterval(interval);
       setCurrentChapter(form.chapterCount);
-      setPdfUrl(result.pdfUrl || null);
-      setStep("done");
-      toast.success("Votre ebook est prêt !");
-    } catch (err: any) {
+      setStep("success");
+      toast.success("Ebook généré avec succès !");
+    } catch (error) {
       setStep("error");
-      setErrorMsg(err?.message || "Une erreur est survenue lors de la génération.");
-      toast.error(err?.message || "Erreur lors de la génération");
+      setErrorMsg(error instanceof Error ? error.message : "Erreur inconnue");
+      toast.error(errorMsg);
     }
   };
 
@@ -108,9 +101,7 @@ export default function Generate() {
     );
   }
 
-  const plan = planQuery.data?.plan ?? "free";
-  const maxChapters = plan === "free" ? 5 : plan === "starter" ? 15 : 30;
-  const creditsRemaining = planQuery.data?.creditsRemaining;
+  const maxChapters = 30;
 
   return (
     <div className="min-h-screen">
@@ -130,9 +121,7 @@ export default function Generate() {
               <div>
                 <h1 className="text-2xl font-display font-bold">Créer un ebook</h1>
                 <p className="text-sm text-muted-foreground">
-                  {creditsRemaining !== null && creditsRemaining !== undefined
-                    ? `${creditsRemaining} ebook${creditsRemaining > 1 ? "s" : ""} restant${creditsRemaining > 1 ? "s" : ""}`
-                    : "Ebooks illimités"}
+                  Générez un ebook professionnel en quelques minutes
                 </p>
               </div>
             </div>
@@ -188,7 +177,7 @@ export default function Generate() {
                       />
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>1</span>
-                        <span>{maxChapters} max ({plan})</span>
+                        <span>{maxChapters} max</span>
                       </div>
                     </div>
 
@@ -228,23 +217,19 @@ export default function Generate() {
                     </div>
                   </div>
 
-                  {plan === "free" && (
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm">
-                      <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-yellow-300/80">
-                        Plan gratuit : le PDF contiendra un filigrane "Generated by EbookAI Studio".
-                        <a href="/pricing" className="text-yellow-400 hover:underline ml-1">Passer à un plan payant →</a>
-                      </span>
-                    </div>
-                  )}
-
                   <Button
                     type="submit"
-                    className="w-full bg-primary hover:bg-primary/90 glow-violet h-12 text-base gap-2"
-                    disabled={createMutation.isPending || generateMutation.isPending}
+                    className="w-full bg-accent hover:bg-accent/90 text-white gap-2"
+                    disabled={createMutation.isPending}
                   >
-                    <Sparkles className="w-5 h-5" />
-                    Générer l'ebook avec l'IA
+                    {createMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Préparation...
+                      </>
+                    ) : (
+                      "Générer l'ebook"
+                    )}
                   </Button>
                 </motion.form>
               )}
@@ -252,86 +237,64 @@ export default function Generate() {
               {step === "generating" && (
                 <motion.div
                   key="generating"
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="glass-card p-10 text-center"
+                  className="space-y-6"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6 animate-pulse-glow">
-                    <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+                  <div className="glass-card p-8 text-center space-y-6">
+                    <div className="flex justify-center">
+                      <Loader2 className="w-12 h-12 animate-spin text-accent" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold mb-2">Génération en cours...</h2>
+                      <p className="text-muted-foreground">
+                        Chapitre {currentChapter + 1} sur {totalChapters}
+                      </p>
+                    </div>
+                    <div className="w-full bg-background rounded-full h-2 overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-accent to-accent/50"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((currentChapter + 1) / totalChapters) * 100}%` }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-display font-bold mb-2">Génération en cours...</h2>
-                  <p className="text-muted-foreground mb-8">
-                    Claude Sonnet rédige votre ebook chapitre par chapitre. Cela peut prendre quelques minutes.
-                  </p>
-
-                  <div className="space-y-3 text-left max-w-sm mx-auto">
-                    {Array.from({ length: totalChapters }, (_, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-                          i < currentChapter
-                            ? "bg-green-500/20 text-green-400"
-                            : i === currentChapter
-                            ? "bg-primary/20 text-primary"
-                            : "bg-muted/50 text-muted-foreground"
-                        }`}>
-                          {i < currentChapter ? (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : i === currentChapter ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <span className="text-xs">{i + 1}</span>
-                          )}
-                        </div>
-                        <span className={`text-sm ${i <= currentChapter ? "text-foreground" : "text-muted-foreground"}`}>
-                          Chapitre {i + 1}
-                          {i < currentChapter && " ✓"}
-                          {i === currentChapter && " — En cours..."}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 h-2 bg-muted/50 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-primary rounded-full"
-                      animate={{ width: `${(currentChapter / totalChapters) * 100}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">{currentChapter}/{totalChapters} chapitres</p>
                 </motion.div>
               )}
 
-              {step === "done" && (
+              {step === "success" && (
                 <motion.div
-                  key="done"
-                  initial={{ opacity: 0, scale: 0.97 }}
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="glass-card p-10 text-center"
+                  exit={{ opacity: 0 }}
+                  className="space-y-6"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10 text-green-400" />
-                  </div>
-                  <h2 className="text-2xl font-display font-bold mb-2">Ebook généré !</h2>
-                  <p className="text-muted-foreground mb-8">
-                    Votre ebook "{form.title}" est prêt. Vous pouvez le télécharger ou le consulter dans votre dashboard.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    {pdfUrl && (
-                      <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => window.open(pdfUrl, "_blank")}>
-                        <BookOpen className="w-4 h-4" />
-                        Télécharger le PDF
+                  <div className="glass-card p-8 text-center space-y-6">
+                    <CheckCircle2 className="w-16 h-16 text-green-400 mx-auto" />
+                    <div>
+                      <h2 className="text-2xl font-bold mb-2">Ebook généré !</h2>
+                      <p className="text-muted-foreground">
+                        Votre ebook est prêt à être téléchargé
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => navigate("/dashboard")}
+                      >
+                        Retour au dashboard
                       </Button>
-                    )}
-                    {ebookId && (
-                      <Button variant="outline" className="border-border/60 gap-2" onClick={() => navigate(`/ebook/${ebookId}`)}>
+                      <Button
+                        className="flex-1 bg-accent hover:bg-accent/90 text-white"
+                        onClick={() => navigate(`/ebook/${ebookId}`)}
+                      >
                         Voir l'ebook
                       </Button>
-                    )}
-                    <Button variant="ghost" onClick={() => { setStep("form"); setForm({ title: "", subject: "", chapterCount: 5, language: "Français", tone: "professional" }); }}>
-                      Créer un autre ebook
-                    </Button>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -339,18 +302,23 @@ export default function Generate() {
               {step === "error" && (
                 <motion.div
                   key="error"
-                  initial={{ opacity: 0, scale: 0.97 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="glass-card p-10 text-center"
+                  exit={{ opacity: 0 }}
+                  className="space-y-6"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
-                    <AlertCircle className="w-10 h-10 text-red-400" />
-                  </div>
-                  <h2 className="text-2xl font-display font-bold mb-2">Erreur de génération</h2>
-                  <p className="text-muted-foreground mb-4">{errorMsg}</p>
-                  <div className="flex gap-3 justify-center">
-                    <Button className="bg-primary" onClick={() => setStep("form")}>Réessayer</Button>
-                    <Button variant="ghost" onClick={() => navigate("/dashboard")}>Retour au dashboard</Button>
+                  <div className="glass-card p-8 text-center space-y-6 border-red-500/30 bg-red-500/5">
+                    <AlertCircle className="w-16 h-16 text-red-400 mx-auto" />
+                    <div>
+                      <h2 className="text-2xl font-bold mb-2">Erreur</h2>
+                      <p className="text-muted-foreground">{errorMsg}</p>
+                    </div>
+                    <Button
+                      className="w-full bg-primary hover:bg-primary/90"
+                      onClick={() => setStep("form")}
+                    >
+                      Réessayer
+                    </Button>
                   </div>
                 </motion.div>
               )}

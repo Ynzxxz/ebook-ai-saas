@@ -1,7 +1,7 @@
 # EbookAI Studio — TODO
 
 ## Base de données
-- [x] Table `users` étendue avec plan, crédits, stripeCustomerId, stripeSubscriptionId
+- [x] Table `users` étendue avec creditsBalance
 - [x] Table `ebooks` avec titre, sujet, chapitres, langue, ton, statut, pdfUrl, filigrane
 - [x] Table `chapters` avec contenu généré par chapitre
 - [x] Migrations SQL appliquées
@@ -11,11 +11,8 @@
 - [x] Procédure `ebook.generate` — générer chapitre par chapitre via LLM (claude-sonnet-4-20250514)
 - [x] Procédure `ebook.list` — historique des ebooks de l'utilisateur
 - [x] Procédure `ebook.get` — détail d'un ebook avec chapitres
+- [x] Procédure `ebook.getCreditsBalance` — solde de crédits utilisateur
 - [x] Service PDF (PDFKit) — couverture, table des matières, chapitres, filigrane plan gratuit
-- [x] Procédure `subscription.createCheckout` — créer session Stripe Checkout
-- [x] Procédure `subscription.createPortal` — portail client Stripe
-- [x] Procédure `subscription.getMyPlan` — plan, crédits, limites
-- [x] Webhook Stripe `/api/stripe/webhook` — mise à jour plan en temps réel
 - [x] Middleware de vérification des crédits (dans ebook.create)
 
 ## Frontend — Page d'accueil
@@ -29,10 +26,10 @@
 - [x] Redirection post-login vers dashboard
 
 ## Frontend — Dashboard
-- [x] Affichage plan actuel et crédits restants
+- [x] Affichage solde de crédits
 - [x] Historique des ebooks (titre, date, statut, téléchargement)
 - [x] Bouton "Nouvel ebook"
-- [x] Bouton upgrade plan
+- [x] Bouton acheter des crédits
 
 ## Frontend — Générateur d'ebook
 - [x] Formulaire (titre, sujet, nb chapitres, langue, ton)
@@ -41,7 +38,10 @@
 - [x] Page détail ebook avec chapitres dépliables
 
 ## Frontend — Page Pricing
-- [x] Page /pricing dédiée avec FAQ
+- [x] Page /pricing avec 3 packs PayPal
+- [x] Pack Starter : 5 générations pour 5€
+- [x] Pack Pro : 20 générations pour 15€
+- [x] Pack Illimité : générations illimitées 30j pour 25€
 
 ## Design
 - [x] Dark mode violet/gris foncé/blanc (OKLCH)
@@ -50,24 +50,35 @@
 - [x] Animations fluides (framer-motion)
 - [x] Design responsive mobile
 
-## Intégration Stripe
-- [x] Stripe Checkout (Starter + Pro)
-- [x] Webhooks : checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.paid
-- [x] Mise à jour plan utilisateur en temps réel
-- [x] Réinitialisation mensuelle des crédits
+## Intégration PayPal
+- [x] Liens de paiement PayPal pour les 3 packs
+- [x] Callback de paiement avec ajout de crédits
+- [x] Vérification des crédits avant génération
+- [x] Message de blocage si pas de crédits
 
 ## Tests
 - [x] Tests vitest pour auth.logout (template)
-- [x] Tests vitest pour ebook.create (validation crédits/plan)
-- [x] Tests vitest pour subscription.getMyPlan
-- [x] Tests vitest pour webhook Stripe
+- [x] Tests vitest pour ebook.create (validation crédits)
+- [x] Tests vitest pour ebook.getCreditsBalance
 
-## Corrections génération LLM (bug signalé)
-- [x] Améliorer le prompt système pour éviter les répétitions et superpositions de phrases
-- [x] Ajouter un prompt de plan global avant la génération des chapitres (cohérence)
-- [x] Améliorer le parsing du contenu markdown retourné par Claude
-- [x] Améliorer le rendu PDF pour gérer correctement le markdown (titres, listes, gras)
-- [x] Corriger les sauts de page et l'espacement dans le PDF
+## Corrections génération LLM
+- [x] Améliorer le prompt système pour éviter les répétitions
+- [x] Ajouter un prompt de plan global avant génération
+- [x] Améliorer le parsing du contenu markdown
+- [x] Améliorer le rendu PDF pour markdown (titres, listes, gras)
+- [x] Corriger les sauts de page et l'espacement
 
-## Correctif pages blanches PDF (bug signalé)
-- [x] Supprimer les pages blanches entre chapitres causées par PDFKit autoFirstPage ou continued:true
+## Correctif pages blanches PDF
+- [x] Reproduire le bug et identifier la cause
+- [x] Réécrire pdfService sans continued:true
+
+## Migration Stripe → PayPal Packs
+- [x] Supprimer Stripe et tous les webhooks
+- [x] Mettre à jour le schéma DB avec creditsBalance
+- [x] Créer les 3 packs PayPal
+- [x] Intégrer les liens de paiement PayPal
+- [x] Ajouter la vérification des crédits
+- [x] Mettre à jour le dashboard avec le solde de crédits
+- [x] Ajouter le message de blocage si pas de crédits
+- [x] Réécrire la page Pricing avec les packs PayPal
+- [x] Supprimer toutes les références Stripe du code

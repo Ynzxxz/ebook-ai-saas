@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE `users` DROP COLUMN `plan`;\nALTER TABLE `users` DROP COLUMN `creditsUsed`;\nALTER TABLE `users` DROP COLUMN `creditsReset`;\nALTER TABLE `users` DROP COLUMN `stripeCustomerId`;\nALTER TABLE `users` DROP COLUMN `stripeSubscriptionId`;\nALTER TABLE `users` DROP COLUMN `stripePriceId`;\nALTER TABLE `users` DROP COLUMN `stripeCurrentPeriodEnd`;\nALTER TABLE `users` ADD COLUMN `creditsBalance` int DEFAULT 3 NOT NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PMESxRgxxNw92t.root --database gRgBbQeBTTfTCJQfRgYUPu --execute \nALTER TABLE `users` DROP COLUMN `plan`;\nALTER TABLE `users` DROP COLUMN `creditsUsed`;\nALTER TABLE `users` DROP COLUMN `creditsReset`;\nALTER TABLE `users` DROP COLUMN `stripeCustomerId`;\nALTER TABLE `users` DROP COLUMN `stripeSubscriptionId`;\nALTER TABLE `users` DROP COLUMN `stripePriceId`;\nALTER TABLE `users` DROP COLUMN `stripeCurrentPeriodEnd`;\nALTER TABLE `users` ADD COLUMN `creditsBalance` int DEFAULT 3 NOT NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2604
+}

@@ -17,16 +17,8 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
 
-  // Subscription & credits
-  plan: mysqlEnum("plan", ["free", "starter", "pro"]).default("free").notNull(),
-  creditsUsed: int("creditsUsed").default(0).notNull(),
-  creditsReset: timestamp("creditsReset"), // date de reset mensuel pour Starter/Pro
-
-  // Stripe
-  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
-  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
-  stripePriceId: varchar("stripePriceId", { length: 128 }),
-  stripeCurrentPeriodEnd: timestamp("stripeCurrentPeriodEnd"),
+  // Credits PayPal
+  creditsBalance: int("creditsBalance").default(3).notNull(), // 3 crédits gratuits au départ
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
