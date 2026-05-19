@@ -106,11 +106,18 @@ export const paypalRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const config = await getPaypalConfigByUserId(ctx.user.id);
-        if (!config || !config.clientId || !config.clientSecret) {
+        // Essayer de récupérer la config en DB d'abord
+        let config = await getPaypalConfigByUserId(ctx.user.id);
+        
+        // Fallback aux variables d'environnement si pas de config en DB
+        const clientId = config?.clientId || process.env.PAYPAL_CLIENT_ID;
+        const clientSecret = config?.clientSecret || process.env.PAYPAL_CLIENT_SECRET;
+        const mode = config?.mode || "sandbox";
+        
+        if (!clientId || !clientSecret) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Configuration PayPal manquante",
+            message: "Configuration PayPal manquante. Veuillez configurer vos identifiants PayPal.",
           });
         }
 
@@ -127,13 +134,13 @@ export const paypalRouter = router({
         }
 
         // Générer le lien PayPal Standard (PDT)
-        const baseUrl = config.mode === "sandbox" 
+        const baseUrl = mode === "sandbox" 
           ? "https://www.sandbox.paypal.com/cgi-bin/webscr"
           : "https://www.paypal.com/cgi-bin/webscr";
 
         const params = new URLSearchParams({
           cmd: "_xclick",
-          business: config.clientId,
+          business: clientId,
           item_name: pack.description,
           amount: pack.amount,
           currency_code: "EUR",
