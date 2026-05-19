@@ -95,4 +95,73 @@ export const paypalRouter = router({
         });
       }
     }),
+
+  // ─── Generate PayPal Checkout Link ────────────────────────────────────────────────
+  createCheckoutLink: protectedProcedure
+    .input(
+      z.object({
+        pack: z.enum(["starter", "pro", "unlimited"]),
+        returnUrl: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const config = await getPaypalConfigByUserId(ctx.user.id);
+        if (!config || !config.clientId || !config.clientSecret) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Configuration PayPal manquante",
+          });
+        }
+
+        // Définir les détails du pack
+        const packDetails: Record<string, { amount: string; credits: number; description: string }> = {
+          starter: { amount: "5.00", credits: 5, description: "Pack Starter - 5 générations" },
+          pro: { amount: "15.00", credits: 20, description: "Pack Pro - 20 générations" },
+          unlimited: { amount: "25.00", credits: 999, description: "Pack Illimité - 30 jours" },
+        };
+
+        const pack = packDetails[input.pack];
+        if (!pack) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Pack invalide" });
+        }
+
+        // Générer le lien PayPal Standard (PDT)
+        const baseUrl = config.mode === "sandbox" 
+          ? "https://www.sandbox.paypal.com/cgi-bin/webscr"
+          : "https://www.paypal.com/cgi-bin/webscr";
+
+        const params = new URLSearchParams({
+          cmd: "_xclick",
+          business: config.clientId,
+          item_name: pack.description,
+          amount: pack.amount,
+          currency_code: "EUR",
+          return: input.returnUrl,
+          cancel_return: input.returnUrl,
+          invoice: `${ctx.user.id}-${input.pack}-${Date.now()}`,
+          custom: JSON.stringify({
+            userId: ctx.user.id,
+            pack: input.pack,
+            credits: pack.credits,
+          }),
+        });
+
+        const checkoutUrl = `${baseUrl}?${params.toString()}`;
+
+        console.log(`[PayPal] Checkout link generated for user ${ctx.user.id}, pack: ${input.pack}`);
+
+        return {
+          url: checkoutUrl,
+          success: true,
+        };
+      } catch (error) {
+        console.error("[PayPal] Error creating checkout link:", error);
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erreur lors de la création du lien de paiement",
+        });
+      }
+    }),
 });

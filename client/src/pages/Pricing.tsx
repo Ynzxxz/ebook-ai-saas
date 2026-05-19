@@ -1,11 +1,13 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import { Check, Sparkles, Zap, Crown } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { useState } from "react";
 
 const PACKS = [
   {
@@ -26,7 +28,6 @@ const PACKS = [
     badge: null,
     icon: Sparkles,
     color: "text-blue-400",
-    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Starter%205%20generations&amount=5.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
   },
   {
     key: "pro" as const,
@@ -46,7 +47,6 @@ const PACKS = [
     badge: "Populaire",
     icon: Zap,
     color: "text-yellow-400",
-    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Pro%2020%20generations&amount=15.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
   },
   {
     key: "unlimited" as const,
@@ -66,20 +66,38 @@ const PACKS = [
     badge: null,
     icon: Crown,
     color: "text-purple-400",
-    paypalLink: "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=Pack%20Illimite%2030%20jours&amount=25.00&currency_code=EUR&return=https://ebookai.manus.space/dashboard&cancel_return=https://ebookai.manus.space/pricing",
   },
 ];
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
+  const [loadingPack, setLoadingPack] = useState<string | null>(null);
+  const createCheckoutMutation = trpc.paypal.createCheckoutLink.useMutation();
 
-  const handlePackClick = (paypalLink: string) => {
+  const handlePackClick = async (packKey: string) => {
     if (!isAuthenticated) {
       window.location.href = getLoginUrl();
       return;
     }
-    toast.info("Redirection vers PayPal...");
-    window.open(paypalLink, "_blank");
+
+    setLoadingPack(packKey);
+    try {
+      const returnUrl = `${window.location.origin}/dashboard`;
+      const result = await createCheckoutMutation.mutateAsync({
+        pack: packKey as "starter" | "pro" | "unlimited",
+        returnUrl,
+      });
+
+      if (result.url) {
+        toast.info("Redirection vers PayPal...");
+        window.open(result.url, "_blank");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la création du lien PayPal:", error);
+      toast.error("Erreur lors de la création du lien de paiement. Veuillez réessayer.");
+    } finally {
+      setLoadingPack(null);
+    }
   };
 
   return (
@@ -99,117 +117,74 @@ export default function Pricing() {
             </p>
           </motion.div>
 
-          {/* Free tier info */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-12 p-6 bg-card rounded-lg border border-border text-center"
-          >
-            <p className="text-sm text-muted-foreground mb-2">Vous avez accès à</p>
-            <p className="text-2xl font-bold text-accent">3 générations gratuites</p>
-            <p className="text-sm text-muted-foreground mt-2">Pas de carte bancaire requise</p>
-          </motion.div>
-
-          {/* Pricing cards */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            {PACKS.map((pack, idx) => {
-              const Icon = pack.icon;
-              return (
-                <motion.div
-                  key={pack.key}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 + idx * 0.1 }}
-                  className={`relative rounded-lg border transition-all duration-300 ${
-                    pack.highlight
-                      ? "border-accent bg-accent/5 md:scale-105 shadow-lg shadow-accent/20"
-                      : "border-border bg-card hover:border-accent/50"
-                  }`}
-                >
-                  {pack.badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-accent text-white">{pack.badge}</Badge>
-                    </div>
-                  )}
-
-                  <div className="p-8">
-                    {/* Header */}
-                    <div className="flex items-center gap-3 mb-6">
-                      <Icon className={`w-6 h-6 ${pack.color}`} />
-                      <h3 className="text-2xl font-bold">{pack.name}</h3>
-                    </div>
-
-                    {/* Price */}
-                    <div className="mb-6">
-                      <div className="flex items-baseline gap-2 mb-2">
-                        <span className="text-4xl font-bold">{pack.price}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{pack.generations}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{pack.desc}</p>
-                    </div>
-
-                    {/* CTA Button */}
-                    <Button
-                      onClick={() => handlePackClick(pack.paypalLink)}
-                      className={`w-full mb-8 ${
-                        pack.highlight
-                          ? "bg-accent hover:bg-accent/90 text-white"
-                          : "bg-primary hover:bg-primary/90 text-white"
-                      }`}
-                    >
-                      {pack.cta}
-                    </Button>
-
-                    {/* Features */}
-                    <div className="space-y-3">
-                      {pack.features.map((feature, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <Check className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-                          <span className="text-sm text-foreground">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {PACKS.map((pack, i) => (
+              <motion.div
+                key={pack.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className={`relative glass-card p-8 flex flex-col ${
+                  pack.highlight ? "border-primary/50 glow-violet" : ""
+                }`}
+              >
+                {pack.badge && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground px-3 py-1">
+                      {pack.badge}
+                    </Badge>
                   </div>
-                </motion.div>
-              );
-            })}
+                )}
+
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <pack.icon className={`w-5 h-5 ${pack.color}`} />
+                    <h3 className="font-display font-bold text-xl">{pack.name}</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">{pack.desc}</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-display font-bold">{pack.price}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">{pack.generations}</p>
+                </div>
+
+                <ul className="space-y-3 mb-8 flex-1">
+                  {pack.features.map((feat) => (
+                    <li key={feat} className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                      <span className="text-foreground/80">{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  className={`w-full ${pack.highlight ? "bg-primary hover:bg-primary/90 glow-violet" : ""}`}
+                  variant={pack.highlight ? "default" : "outline"}
+                  onClick={() => handlePackClick(pack.key)}
+                  disabled={loadingPack === pack.key}
+                >
+                  {loadingPack === pack.key ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Chargement...
+                    </>
+                  ) : (
+                    pack.cta
+                  )}
+                </Button>
+              </motion.div>
+            ))}
           </div>
 
-          {/* FAQ */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="max-w-2xl mx-auto"
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="mt-16 text-center"
           >
-            <h2 className="text-2xl font-bold mb-8 text-center">Questions fréquentes</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2">Comment fonctionne le système de crédits ?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Chaque génération d'ebook consomme 1 crédit. Vous pouvez acheter des packs pour ajouter des crédits à votre compte.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Mes crédits expirent-ils ?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les crédits achetés restent valides pendant 30 jours après l'achat. Passé ce délai, ils sont supprimés.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Puis-je annuler mon achat ?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Oui, vous pouvez demander un remboursement dans les 14 jours suivant votre achat. Contactez notre support.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Quels moyens de paiement acceptez-vous ?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Nous acceptons PayPal, qui supporte les cartes de crédit, les portefeuilles numériques et les virements bancaires.
-                </p>
-              </div>
-            </div>
+            <p className="text-muted-foreground">
+              Vous avez déjà 3 ebooks gratuits pour commencer.
+            </p>
           </motion.div>
         </div>
       </div>
