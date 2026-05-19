@@ -28,9 +28,10 @@ const FEATURES = [
 ];
 
 const PLANS = [
-  { key: "free", name: "Gratuit", price: "0€", period: "", desc: "Pour découvrir la plateforme", features: ["3 ebooks au total", "Export PDF avec filigrane", "5 chapitres maximum", "Toutes les langues"], cta: "Commencer gratuitement", highlight: false, badge: null },
-  { key: "starter", name: "Starter", price: "9€", period: "/mois", desc: "Pour les créateurs réguliers", features: ["20 ebooks par mois", "Export PDF sans filigrane", "15 chapitres maximum", "Support email"], cta: "Choisir Starter", highlight: true, badge: "Populaire" },
-  { key: "pro", name: "Pro", price: "29€", period: "/mois", desc: "Pour les professionnels", features: ["Ebooks illimités", "Export PDF + EPUB", "30 chapitres maximum", "Support prioritaire", "Accès anticipé"], cta: "Choisir Pro", highlight: false, badge: null },
+  { key: "free", name: "Gratuit", price: "0€", period: "", desc: "Pour découvrir la plateforme", features: ["3 ebooks au total", "Export PDF avec filigrane", "Tous les chapitres", "Toutes les langues"], cta: "Commencer gratuitement", highlight: false, badge: null },
+  { key: "starter", name: "Starter", price: "5€", period: "", desc: "5 générations d'ebook", features: ["5 ebooks", "Export PDF sans filigrane", "Tous les chapitres", "Paiement unique"], cta: "Acheter Starter", highlight: true, badge: "Populaire" },
+  { key: "pro", name: "Pro", price: "15€", period: "", desc: "20 générations d'ebook", features: ["20 ebooks", "Export PDF sans filigrane", "Tous les chapitres", "Paiement unique"], cta: "Acheter Pro", highlight: false, badge: null },
+  { key: "unlimited", name: "Illimité", price: "25€", period: "/30j", desc: "Générations illimitées pendant 30 jours", features: ["Ebooks illimités", "Export PDF sans filigrane", "Tous les chapitres", "Valide 30 jours"], cta: "Acheter Illimité", highlight: false, badge: "Meilleur rapport" },
 ];
 
 export default function Home() {
@@ -128,7 +129,7 @@ export default function Home() {
             <h2 className="text-4xl font-display font-bold mb-4">Simple et transparent</h2>
             <p className="text-muted-foreground text-lg">Commencez gratuitement, évoluez selon vos besoins.</p>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {PLANS.map((plan, i) => (
               <motion.div key={plan.key} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.5 }} className={"relative glass-card p-8 flex flex-col " + (plan.highlight ? "border-primary/50 glow-violet" : "")}>
                 {plan.badge && (<div className="absolute -top-3 left-1/2 -translate-x-1/2"><Badge className="bg-primary text-primary-foreground px-3 py-1">{plan.badge}</Badge></div>)}
