@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handlePayPalWebhook } from "../paypal/webhook";
+import { handleRenewUnlimitedHandler } from "../scheduled/renewUnlimited";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -41,6 +42,9 @@ async function startServer() {
   
   // PayPal IPN webhook
   app.post("/api/paypal/webhook", handlePayPalWebhook);
+  
+  // Scheduled tasks
+  app.post("/api/scheduled/renew-unlimited", handleRenewUnlimitedHandler);
   
   registerStorageProxy(app);
   registerOAuthRoutes(app);

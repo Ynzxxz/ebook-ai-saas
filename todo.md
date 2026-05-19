@@ -84,8 +84,8 @@
 - [x] Supprimer toutes les références Stripe du code
 
 
-## Webhook PayPal IPN et historique (en cours)
+## Webhook PayPal IPN et historique
 - [x] Ajouter table `transactions` au schéma DB
 - [x] Créer le webhook PayPal IPN `/api/paypal/webhook`
 - [x] Créer la page `/transactions` avec historique
-- [ ] Implémenter le renouvellement automatique du pack Illimité
+- [x] Implémenter le renouvellement automatique du pack Illimité
