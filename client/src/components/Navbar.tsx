@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Menu, X, Sparkles } from "lucide-react";
+import { BookOpen, Menu, X, Sparkles, Settings as SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -48,6 +48,14 @@ export default function Navbar() {
               >
                 <Sparkles className="w-4 h-4" />
                 Créer un ebook
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/settings")}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <SettingsIcon className="w-4 h-4" />
               </Button>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-semibold">
