@@ -1,97 +1,153 @@
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
-import { getPaypalConfigByUserId, upsertPaypalConfig } from "../db";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "../db";
+import { getPaypalConfigByUserId, upsertPaypalConfig } from "../db";
+
+const PACK_DETAILS = {
+  starter: { amount: "5.00", credits: 5, description: "Pack Starter - 5 générations" },
+  pro: { amount: "15.00", credits: 20, description: "Pack Pro - 20 générations" },
+  unlimited: { amount: "25.00", credits: 999, description: "Pack Illimité - 30 jours" },
+} as const;
+
+/**
+ * Get PayPal Access Token
+ */
+async function getPayPalAccessToken(clientId: string, clientSecret: string, mode: string) {
+  const baseUrl = mode === "sandbox" 
+    ? "https://api.sandbox.paypal.com"
+    : "https://api.paypal.com";
+
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const response = await fetch(`${baseUrl}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("[PayPal] Token error:", error);
+    throw new Error("Failed to get PayPal access token");
+  }
+
+  const data = (await response.json()) as { access_token: string };
+  return data.access_token;
+}
+
+/**
+ * Create PayPal Order
+ */
+async function createPayPalOrder(
+  accessToken: string,
+  pack: keyof typeof PACK_DETAILS,
+  returnUrl: string,
+  mode: string,
+  userId: number
+) {
+  const baseUrl = mode === "sandbox" 
+    ? "https://api.sandbox.paypal.com"
+    : "https://api.paypal.com";
+
+  const packInfo = PACK_DETAILS[pack];
+
+  const response = await fetch(`${baseUrl}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "EUR",
+            value: packInfo.amount,
+          },
+          description: packInfo.description,
+          custom_id: `user-${userId}-pack-${pack}`,
+        },
+      ],
+      application_context: {
+        brand_name: "EbookAI Studio",
+        locale: "fr-FR",
+        user_action: "PAY_NOW",
+        return_url: returnUrl,
+        cancel_url: returnUrl,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("[PayPal] Order creation error:", error);
+    throw new Error("Failed to create PayPal order");
+  }
+
+  const data = (await response.json()) as { id: string; links: Array<{ rel: string; href: string }> };
+  
+  // Find the approval link
+  const approvalLink = data.links.find((link) => link.rel === "approve");
+  if (!approvalLink) {
+    throw new Error("No approval link in PayPal response");
+  }
+
+  return {
+    orderId: data.id,
+    approvalUrl: approvalLink.href,
+  };
+}
 
 export const paypalRouter = router({
-  // ─── Get PayPal Config ────────────────────────────────────────────────────────
+  // ─── Get PayPal Configuration ────────────────────────────────────────────────
   getConfig: protectedProcedure.query(async ({ ctx }) => {
     try {
       const config = await getPaypalConfigByUserId(ctx.user.id);
       if (!config) {
         return null;
       }
-      // Retourner la config sans exposer le secret complet
+      // Don't return the secret
       return {
-        id: config.id,
         clientId: config.clientId,
-        clientSecret: config.clientSecret ? "***" : "",
         mode: config.mode,
-        webhookId: config.webhookId,
-        createdAt: config.createdAt,
-        updatedAt: config.updatedAt,
       };
     } catch (error) {
       console.error("[PayPal] Error getting config:", error);
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Erreur lors de la récupération de la configuration",
+        message: "Erreur lors de la récupération de la configuration PayPal",
       });
     }
   }),
 
-  // ─── Save PayPal Config ────────────────────────────────────────────────────────────
+  // ─── Save PayPal Configuration ────────────────────────────────────────────────
   saveConfig: protectedProcedure
     .input(
       z.object({
-        clientId: z.string().min(1, "Client ID requis"),
-        clientSecret: z.string().min(1, "Client Secret requis").optional(),
+        clientId: z.string().min(1),
+        clientSecret: z.string().optional(),
         mode: z.enum(["sandbox", "live"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        // Valider que l'utilisateur est admin (owner du projet)
-        if (ctx.user.role !== "admin") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Seul l'administrateur peut configurer PayPal",
-          });
-        }
-
-        // Si clientSecret n'est pas fourni, on garde l'ancien
-        let secretToSave = input.clientSecret;
-        if (!secretToSave) {
-          const db = await getDb();
-          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-          
-          const existing = await getPaypalConfigByUserId(ctx.user.id);
-          if (!existing) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Client Secret requis pour la première configuration",
-            });
-          }
-          secretToSave = existing.clientSecret;
-        }
-
-        const config = await upsertPaypalConfig({
+        await upsertPaypalConfig({
           userId: ctx.user.id,
           clientId: input.clientId,
-          clientSecret: secretToSave,
+          clientSecret: input.clientSecret || "",
           mode: input.mode,
         });
 
-        if (!config) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Erreur lors de la sauvegarde de la configuration",
-          });
-        }
-
-        console.log(`[PayPal] Config saved for user ${ctx.user.id} in ${input.mode} mode`);
-
-        return {
-          success: true,
-          message: "Configuration PayPal sauvegardée avec succès",
-        };
+        return { success: true };
       } catch (error) {
         console.error("[PayPal] Error saving config:", error);
-        if (error instanceof TRPCError) throw error;
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Erreur lors de la sauvegarde de la configuration",
+          message: "Erreur lors de la sauvegarde de la configuration PayPal",
         });
       }
     }),
@@ -121,53 +177,29 @@ export const paypalRouter = router({
           });
         }
 
-        // Définir les détails du pack
-        const packDetails: Record<string, { amount: string; credits: number; description: string }> = {
-          starter: { amount: "5.00", credits: 5, description: "Pack Starter - 5 générations" },
-          pro: { amount: "15.00", credits: 20, description: "Pack Pro - 20 générations" },
-          unlimited: { amount: "25.00", credits: 999, description: "Pack Illimité - 30 jours" },
-        };
+        // Get access token
+        const accessToken = await getPayPalAccessToken(clientId, clientSecret, mode);
 
-        const pack = packDetails[input.pack];
-        if (!pack) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Pack invalide" });
-        }
+        // Create order
+        const { orderId, approvalUrl } = await createPayPalOrder(
+          accessToken,
+          input.pack,
+          input.returnUrl,
+          mode,
+          ctx.user.id
+        );
 
-        // Générer le lien PayPal Standard (PDT)
-        const baseUrl = mode === "sandbox" 
-          ? "https://www.sandbox.paypal.com/cgi-bin/webscr"
-          : "https://www.paypal.com/cgi-bin/webscr";
-
-        const params = new URLSearchParams({
-          cmd: "_xclick",
-          business: clientId,
-          item_name: pack.description,
-          amount: pack.amount,
-          currency_code: "EUR",
-          return: input.returnUrl,
-          cancel_return: input.returnUrl,
-          invoice: `${ctx.user.id}-${input.pack}-${Date.now()}`,
-          custom: JSON.stringify({
-            userId: ctx.user.id,
-            pack: input.pack,
-            credits: pack.credits,
-          }),
-        });
-
-        const checkoutUrl = `${baseUrl}?${params.toString()}`;
-
-        console.log(`[PayPal] Checkout link generated for user ${ctx.user.id}, pack: ${input.pack}`);
+        console.log(`[PayPal] Checkout link generated for user ${ctx.user.id}, pack: ${input.pack}, orderId: ${orderId}`);
 
         return {
-          url: checkoutUrl,
-          success: true,
+          url: approvalUrl,
+          orderId,
         };
       } catch (error) {
-        console.error("[PayPal] Error creating checkout link:", error);
-        if (error instanceof TRPCError) throw error;
+        console.error(`[PayPal] Error creating checkout link:`, error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Erreur lors de la création du lien de paiement",
+          message: "Erreur lors de la création du lien de paiement PayPal",
         });
       }
     }),
