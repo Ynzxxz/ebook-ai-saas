@@ -82,7 +82,7 @@ export default function Pricing() {
 
     setLoadingPack(packKey);
     try {
-      const returnUrl = `${window.location.origin}/dashboard`;
+      const returnUrl = `${window.location.origin}/payment-success`;
       const result = await createCheckoutMutation.mutateAsync({
         pack: packKey as "starter" | "pro" | "unlimited",
         returnUrl,
@@ -90,7 +90,8 @@ export default function Pricing() {
 
       if (result.url) {
         toast.info("Redirection vers PayPal...");
-        window.open(result.url, "_blank");
+        // Rediriger vers PayPal dans la même fenêtre
+        window.location.href = result.url;
       }
     } catch (error) {
       console.error("Erreur lors de la création du lien PayPal:", error);

@@ -11,6 +11,7 @@ import EbookDetail from "./pages/EbookDetail";
 import Pricing from "./pages/Pricing";
 import Transactions from "./pages/Transactions";
 import PayPalSettings from "./pages/PayPalSettings";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/settings/payment" component={PayPalSettings} />
+      <Route path="/payment-success" component={PaymentSuccess} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
