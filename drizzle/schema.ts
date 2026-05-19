@@ -100,3 +100,25 @@ export const transactions = mysqlTable("transactions", {
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
+
+// ─── PayPal Config ────────────────────────────────────────────────────────────
+export const paypalConfig = mysqlTable("paypalConfig", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(), // Un seul config par utilisateur (owner)
+  
+  // PayPal API credentials (chiffrées en base)
+  clientId: text("clientId").notNull(),
+  clientSecret: text("clientSecret").notNull(),
+  
+  // Mode (sandbox ou live)
+  mode: mysqlEnum("mode", ["sandbox", "live"]).notNull().default("sandbox"),
+  
+  // Webhook ID
+  webhookId: varchar("webhookId", { length: 256 }),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaypalConfig = typeof paypalConfig.$inferSelect;
+export type InsertPaypalConfig = typeof paypalConfig.$inferInsert;

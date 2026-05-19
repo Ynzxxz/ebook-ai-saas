@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { chapters, ebooks, InsertChapter, InsertEbook, InsertUser, users, transactions, InsertTransaction } from "../drizzle/schema";
+import { chapters, ebooks, InsertChapter, InsertEbook, InsertUser, users, transactions, InsertTransaction, paypalConfig, InsertPaypalConfig, PaypalConfig } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -163,4 +163,30 @@ export async function updateTransaction(id: number, data: Partial<{
   const db = await getDb();
   if (!db) return;
   await db.update(transactions).set(data).where(eq(transactions.id, id));
+}
+
+
+// ─── PayPal Config ────────────────────────────────────────────────────────────
+
+export async function getPaypalConfigByUserId(userId: number): Promise<PaypalConfig | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(paypalConfig).where(eq(paypalConfig.userId, userId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function upsertPaypalConfig(data: InsertPaypalConfig): Promise<PaypalConfig | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!data.userId) throw new Error("userId is required");
+  
+  const existing = await getPaypalConfigByUserId(data.userId);
+  
+  if (existing) {
+    await db.update(paypalConfig).set(data).where(eq(paypalConfig.userId, data.userId));
+    return getPaypalConfigByUserId(data.userId);
+  } else {
+    await db.insert(paypalConfig).values(data);
+    return getPaypalConfigByUserId(data.userId);
+  }
 }

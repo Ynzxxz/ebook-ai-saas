@@ -143,6 +143,13 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  onClick={() => navigate("/settings/payment")}
+                >
+                  Configurer PayPal
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => navigate("/transactions")}
                 >
                   Historique

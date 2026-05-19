@@ -89,3 +89,10 @@
 - [x] Créer le webhook PayPal IPN `/api/paypal/webhook`
 - [x] Créer la page `/transactions` avec historique
 - [x] Implémenter le renouvellement automatique du pack Illimité
+
+
+## Page Settings PayPal
+- [x] Créer la page `/settings/payment` pour configurer les clés PayPal
+- [x] Ajouter les champs Client ID et Secret avec validation
+- [x] Stocker les clés de manière sécurisée en base de données
+- [x] Ajouter le lien Settings dans le Navbar/Dashboard

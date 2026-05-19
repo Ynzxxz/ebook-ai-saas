@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ebookRouter } from "./routers/ebook";
+import { paypalRouter } from "./routers/paypal";
 
 
 export const appRouter = router({
@@ -20,6 +21,7 @@ export const appRouter = router({
   }),
 
   ebook: ebookRouter,
+  paypal: paypalRouter,
 });
 
 export type AppRouter = typeof appRouter;

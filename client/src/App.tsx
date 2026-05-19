@@ -10,6 +10,7 @@ import Generate from "./pages/Generate";
 import EbookDetail from "./pages/EbookDetail";
 import Pricing from "./pages/Pricing";
 import Transactions from "./pages/Transactions";
+import PayPalSettings from "./pages/PayPalSettings";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/ebook/:id" component={EbookDetail} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/transactions" component={Transactions} />
+      <Route path="/settings/payment" component={PayPalSettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
