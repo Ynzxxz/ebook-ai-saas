@@ -70,3 +70,33 @@ export const chapters = mysqlTable("chapters", {
 
 export type Chapter = typeof chapters.$inferSelect;
 export type InsertChapter = typeof chapters.$inferInsert;
+
+// ─── Transactions (PayPal) ────────────────────────────────────────────────────
+export const transactions = mysqlTable("transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+
+  // PayPal info
+  paypalTransactionId: varchar("paypalTransactionId", { length: 256 }).unique(),
+  paypalOrderId: varchar("paypalOrderId", { length: 256 }),
+
+  // Pack info
+  packType: mysqlEnum("packType", ["starter", "pro", "unlimited"]).notNull(),
+  amount: varchar("amount", { length: 10 }).notNull(),
+  creditsAdded: int("creditsAdded").notNull(),
+
+  // Status
+  status: mysqlEnum("status", ["pending", "completed", "failed", "refunded"])
+    .notNull()
+    .default("pending"),
+
+  // Expiry (for unlimited pack)
+  expiresAt: timestamp("expiresAt"),
+  isRenewed: boolean("isRenewed").default(false).notNull(),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Transaction = typeof transactions.$inferSelect;
+export type InsertTransaction = typeof transactions.$inferInsert;

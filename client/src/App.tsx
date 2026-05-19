@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Generate from "./pages/Generate";
 import EbookDetail from "./pages/EbookDetail";
 import Pricing from "./pages/Pricing";
+import Transactions from "./pages/Transactions";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/generate" component={Generate} />
       <Route path="/ebook/:id" component={EbookDetail} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/transactions" component={Transactions} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

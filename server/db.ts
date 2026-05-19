@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { chapters, ebooks, InsertChapter, InsertEbook, InsertUser, users } from "../drizzle/schema";
+import { chapters, ebooks, InsertChapter, InsertEbook, InsertUser, users, transactions, InsertTransaction } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -130,4 +130,37 @@ export async function getEbookWithChapters(ebookId: number) {
   if (!ebook) return null;
   const chapterList = await getChaptersByEbookId(ebookId);
   return { ...ebook, chapters: chapterList };
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+export async function createTransaction(data: InsertTransaction) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(transactions).values(data);
+  return (result[0] as any).insertId as number;
+}
+
+export async function getTransactionsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(transactions).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt));
+}
+
+export async function getTransactionByPayPalId(paypalTransactionId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(transactions).where(eq(transactions.paypalTransactionId, paypalTransactionId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateTransaction(id: number, data: Partial<{
+  status: "pending" | "completed" | "failed" | "refunded";
+  paypalTransactionId: string;
+  paypalOrderId: string;
+  isRenewed: boolean;
+}>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(transactions).set(data).where(eq(transactions.id, id));
 }

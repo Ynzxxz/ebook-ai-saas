@@ -12,6 +12,7 @@ import {
   getUserById,
   getUserCreditsBalance,
   updateEbook,
+  getTransactionsByUserId,
 } from "../db";
 import { generateEbookPdf } from "../pdfService";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -282,5 +283,10 @@ export const ebookRouter = router({
   getCreditsBalance: protectedProcedure.query(async ({ ctx }) => {
     const balance = await getUserCreditsBalance(ctx.user.id);
     return { balance };
+  }),
+
+  // ─── Get user transactions ────────────────────────────────────────────────────
+  getTransactions: protectedProcedure.query(async ({ ctx }) => {
+    return getTransactionsByUserId(ctx.user.id);
   }),
 });

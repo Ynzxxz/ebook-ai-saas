@@ -139,14 +139,23 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-display font-bold">Mes ebooks</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refetchEbooks()}
-                disabled={ebooksLoading}
-              >
-                <RefreshCw className={`w-4 h-4 ${ebooksLoading ? "animate-spin" : ""}`} />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/transactions")}
+                >
+                  Historique
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetchEbooks()}
+                  disabled={ebooksLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 ${ebooksLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
             </div>
 
             {ebooksLoading ? (

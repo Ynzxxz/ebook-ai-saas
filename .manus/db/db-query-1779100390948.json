@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `transactions` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `paypalTransactionId` varchar(256) UNIQUE,\n  `paypalOrderId` varchar(256),\n  `packType` enum('starter', 'pro', 'unlimited') NOT NULL,\n  `amount` varchar(10) NOT NULL,\n  `creditsAdded` int NOT NULL,\n  `status` enum('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'pending',\n  `expiresAt` timestamp NULL,\n  `isRenewed` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PMESxRgxxNw92t.root --database gRgBbQeBTTfTCJQfRgYUPu --execute CREATE TABLE `transactions` (\n  `id` int AUTO_INCREMENT PRIMARY KEY,\n  `userId` int NOT NULL,\n  `paypalTransactionId` varchar(256) UNIQUE,\n  `paypalOrderId` varchar(256),\n  `packType` enum('starter', 'pro', 'unlimited') NOT NULL,\n  `amount` varchar(10) NOT NULL,\n  `creditsAdded` int NOT NULL,\n  `status` enum('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'pending',\n  `expiresAt` timestamp NULL,\n  `isRenewed` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 961
+}

@@ -82,3 +82,10 @@
 - [x] Ajouter le message de blocage si pas de crédits
 - [x] Réécrire la page Pricing avec les packs PayPal
 - [x] Supprimer toutes les références Stripe du code
+
+
+## Webhook PayPal IPN et historique (en cours)
+- [x] Ajouter table `transactions` au schéma DB
+- [x] Créer le webhook PayPal IPN `/api/paypal/webhook`
+- [x] Créer la page `/transactions` avec historique
+- [ ] Implémenter le renouvellement automatique du pack Illimité
