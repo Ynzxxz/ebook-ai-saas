@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import { BookOpen, Download, ArrowLeft, Loader2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { BookOpen, Download, ArrowLeft, Loader2, ChevronDown, ChevronUp, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
@@ -76,9 +76,17 @@ export default function EbookDetail() {
             <div className="glass-card p-6 mb-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                  </div>
+                  {ebook.coverImageUrl ? (
+                    <img
+                      src={ebook.coverImageUrl}
+                      alt={ebook.title}
+                      className="w-24 h-32 rounded-lg object-cover shadow-lg flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-24 h-32 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 border border-border/50">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
                   <div>
                     <h1 className="text-2xl font-display font-bold mb-1">{ebook.title}</h1>
                     <p className="text-muted-foreground text-sm mb-3">{ebook.subject}</p>
@@ -92,15 +100,26 @@ export default function EbookDetail() {
                     </div>
                   </div>
                 </div>
-                {ebook.status === "completed" && ebook.pdfUrl && (
-                  <Button
-                    className="bg-primary hover:bg-primary/90 gap-2 flex-shrink-0"
-                    onClick={() => window.open(ebook.pdfUrl!, "_blank")}
-                  >
-                    <Download className="w-4 h-4" />
-                    PDF
-                  </Button>
-                )}
+                <div className="flex gap-2 flex-shrink-0">
+                  {ebook.coverImageUrl && (
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => navigate(`/ebook/${ebook.id}/cover`)}
+                    >
+                      Éditer la couverture
+                    </Button>
+                  )}
+                  {ebook.status === "completed" && ebook.pdfUrl && (
+                    <Button
+                      className="bg-primary hover:bg-primary/90 gap-2"
+                      onClick={() => window.open(ebook.pdfUrl!, "_blank")}
+                    >
+                      <Download className="w-4 h-4" />
+                      PDF
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 

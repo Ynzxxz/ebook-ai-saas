@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Generate from "./pages/Generate";
 import EbookDetail from "./pages/EbookDetail";
+import CoverEditor from "./pages/CoverEditor";
 import Pricing from "./pages/Pricing";
 import Transactions from "./pages/Transactions";
 import PayPalSettings from "./pages/PayPalSettings";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/generate" component={Generate} />
       <Route path="/ebook/:id" component={EbookDetail} />
+      <Route path="/ebook/:id/cover" component={CoverEditor} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/settings" component={Settings} />
