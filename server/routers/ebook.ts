@@ -107,16 +107,8 @@ export const ebookRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const creditsBalance = await getUserCreditsBalance(ctx.user.id);
-
-      if (creditsBalance <= 0) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Vous n'avez plus de crédits. Achetez un pack pour continuer.",
-        });
-      }
-
-      const hasWatermark = false; // Pas de filigrane avec le système de packs
+      // Le forfait gratuit est maintenant illimité - pas de vérification de crédits
+      const hasWatermark = false; // Pas de filigrane
 
       const ebookId = await createEbook({
         userId: ctx.user.id,
@@ -249,7 +241,7 @@ export const ebookRouter = router({
         });
 
         // ── Step 4 : Deduct credit ──────────────────────────────────────────────
-        await deductUserCredits(ctx.user.id, 1);
+        // Crédits non déduits - le forfait gratuit est maintenant illimité
 
         return { success: true, pdfUrl: url };
       } catch (error) {

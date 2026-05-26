@@ -12,22 +12,22 @@ import { useState } from "react";
 const PACKS = [
   {
     key: "starter" as const,
-    name: "Pack Starter",
-    price: "5€",
-    generations: "5 générations",
-    desc: "Parfait pour commencer",
+    name: "Pack Gratuit",
+    price: "Gratuit",
+    generations: "Illimité",
+    desc: "Accès complet sans limite",
     features: [
-      "5 générations d'ebooks",
+      "Générations d'ebooks illimitées",
       "Export PDF de qualité",
       "Jusqu'à 30 chapitres par ebook",
       "Toutes les langues",
-      "Valide 30 jours après achat",
+      "Aucune limite de temps",
     ],
-    cta: "Acheter maintenant",
-    highlight: false,
-    badge: null,
+    cta: "Commencer gratuitement",
+    highlight: true,
+    badge: "Gratuit",
     icon: Sparkles,
-    color: "text-blue-400",
+    color: "text-green-400",
   },
   {
     key: "pro" as const,
@@ -80,6 +80,11 @@ export default function Pricing() {
       return;
     }
 
+    if (packKey === "starter") {
+      window.location.href = "/generate";
+      return;
+    }
+
     setLoadingPack(packKey);
     try {
       const returnUrl = `${window.location.origin}/payment-success`;
@@ -90,7 +95,6 @@ export default function Pricing() {
 
       if (result.url) {
         toast.info("Redirection vers PayPal...");
-        // Rediriger vers PayPal dans la même fenêtre
         window.location.href = result.url;
       }
     } catch (error) {
