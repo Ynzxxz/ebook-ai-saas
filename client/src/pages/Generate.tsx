@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/Navbar";
-import { Sparkles, ArrowLeft, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { Sparkles, ArrowLeft, AlertCircle, Loader2, CheckCircle2, Palette, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -39,10 +39,18 @@ export default function Generate() {
     chapterCount: 5,
     language: "Français",
     tone: "professional" as "professional" | "casual" | "academic" | "creative" | "motivational",
+    primaryColor: "#7c3aed",
+    fontFamily: "inter" as "inter" | "playfair" | "merriweather",
+    autoStyle: true,
   });
 
   const createMutation = trpc.ebook.create.useMutation();
   const generateMutation = trpc.ebook.generate.useMutation();
+  const updateStylingMutation = trpc.ebook.updateStyling.useMutation();
+  const getAutoStylingQuery = trpc.ebook.getAutoStyling.useQuery(
+    { subject: form.subject },
+    { enabled: form.autoStyle && form.subject.length > 0 }
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +67,23 @@ export default function Generate() {
       // Create ebook
       const { ebookId: newId } = await createMutation.mutateAsync(form);
       setEbookId(newId);
+
+      // Update styling if not auto
+      if (!form.autoStyle) {
+        await updateStylingMutation.mutateAsync({
+          ebookId: newId,
+          primaryColor: form.primaryColor,
+          fontFamily: form.fontFamily,
+          autoStyle: false,
+        });
+      } else if (getAutoStylingQuery.data) {
+        await updateStylingMutation.mutateAsync({
+          ebookId: newId,
+          primaryColor: getAutoStylingQuery.data.primaryColor,
+          fontFamily: getAutoStylingQuery.data.fontFamily,
+          autoStyle: true,
+        });
+      }
 
       // Simulate progress
       const interval = setInterval(() => {
@@ -215,6 +240,87 @@ export default function Generate() {
                         </Select>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Personnalisation */}
+                  <div className="glass-card p-6 space-y-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Palette className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold">Personnalisation</h3>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                      <input
+                        type="checkbox"
+                        id="autoStyle"
+                        checked={form.autoStyle}
+                        onChange={(e) => setForm({ ...form, autoStyle: e.target.checked })}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      <label htmlFor="autoStyle" className="text-sm cursor-pointer flex-1">
+                        <div className="font-medium">Mode automatique</div>
+                        <div className="text-xs text-muted-foreground">L'IA choisit les meilleures couleurs et polices</div>
+                      </label>
+                    </div>
+
+                    {!form.autoStyle && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Couleur primaire</Label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={form.primaryColor}
+                              onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                              className="w-12 h-10 rounded cursor-pointer"
+                            />
+                            <Input
+                              value={form.primaryColor}
+                              onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                              className="flex-1 bg-input/50 border-border/60"
+                              placeholder="#7c3aed"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Police</Label>
+                          <Select value={form.fontFamily} onValueChange={(v) => setForm({ ...form, fontFamily: v as any })}>
+                            <SelectTrigger className="bg-input/50 border-border/60">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="inter">Inter (Moderne)</SelectItem>
+                              <SelectItem value="playfair">Playfair (Élégant)</SelectItem>
+                              <SelectItem value="merriweather">Merriweather (Classique)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+
+                    {form.autoStyle && getAutoStylingQuery.isLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Analyse du sujet...
+                      </div>
+                    )}
+
+                    {form.autoStyle && getAutoStylingQuery.data && (
+                      <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 text-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Wand2 className="w-4 h-4 text-primary" />
+                          <span className="font-medium">Recommandations IA</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded border border-primary/30"
+                            style={{ backgroundColor: getAutoStylingQuery.data.primaryColor }}
+                          />
+                          <span className="text-xs">{getAutoStylingQuery.data.fontFamily}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Button

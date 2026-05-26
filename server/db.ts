@@ -105,6 +105,10 @@ export async function updateEbook(id: number, data: Partial<{
   pdfUrl: string;
   errorMessage: string;
   hasWatermark: boolean;
+  primaryColor: string;
+  fontFamily: string;
+  coverImageUrl: string;
+  autoStyle: boolean;
 }>) {
   const db = await getDb();
   if (!db) return;

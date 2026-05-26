@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `ebooks` ADD `primaryColor` varchar(7) DEFAULT '#7c3aed' NOT NULL;\nALTER TABLE `ebooks` ADD `fontFamily` varchar(64) DEFAULT 'inter' NOT NULL;\nALTER TABLE `ebooks` ADD `coverImageUrl` varchar(1024);\nALTER TABLE `ebooks` ADD `autoStyle` boolean DEFAULT true NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3PMESxRgxxNw92t.root --database gRgBbQeBTTfTCJQfRgYUPu --execute ALTER TABLE `ebooks` ADD `primaryColor` varchar(7) DEFAULT '#7c3aed' NOT NULL;\nALTER TABLE `ebooks` ADD `fontFamily` varchar(64) DEFAULT 'inter' NOT NULL;\nALTER TABLE `ebooks` ADD `coverImageUrl` varchar(1024);\nALTER TABLE `ebooks` ADD `autoStyle` boolean DEFAULT true NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1599
+}

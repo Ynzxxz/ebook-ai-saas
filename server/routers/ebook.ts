@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { invokeLLM } from "../_core/llm";
+import { generateImage } from "../_core/imageGeneration";
 import {
   addUserCredits,
   createChapter,
@@ -289,4 +290,111 @@ export const ebookRouter = router({
   getTransactions: protectedProcedure.query(async ({ ctx }) => {
     return getTransactionsByUserId(ctx.user.id);
   }),
+
+  // ─── Generate cover image with AI ──────────────────────────────────────────────
+  generateCoverImage: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number().int(),
+        subject: z.string().min(1),
+        title: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ebook = await getEbookById(input.ebookId);
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "Ebook introuvable" });
+      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+      try {
+        const prompt = `Crée une couverture d'ebook professionnelle et attrayante pour:\nTitre: "${input.title}"\nSujet: "${input.subject}"\n\nLa couverture doit être moderne, avec une bonne hiérarchie visuelle et des couleurs harmonieuses.`;
+
+        const { url } = await generateImage({ prompt });
+        
+        await updateEbook(input.ebookId, { coverImageUrl: url });
+        
+        return { success: true, imageUrl: url };
+      } catch (error) {
+        console.error("[Cover Generation] Error:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erreur lors de la génération de l'image de couverture",
+        });
+      }
+    }),
+
+  // ─── Update ebook styling ──────────────────────────────────────────────────────
+  updateStyling: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number().int(),
+        primaryColor: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+        fontFamily: z.enum(["inter", "playfair", "merriweather"]).optional(),
+        autoStyle: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ebook = await getEbookById(input.ebookId);
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "Ebook introuvable" });
+      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const updateData: any = {};
+      if (input.primaryColor) updateData.primaryColor = input.primaryColor;
+      if (input.fontFamily) updateData.fontFamily = input.fontFamily;
+      if (input.autoStyle !== undefined) updateData.autoStyle = input.autoStyle;
+
+      await updateEbook(input.ebookId, updateData);
+      return { success: true };
+    }),
+
+  // ─── Get auto styling recommendation ────────────────────────────────────────────
+  getAutoStyling: protectedProcedure
+    .input(z.object({ subject: z.string().min(1) }))
+    .query(async ({ input }) => {
+      try {
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: "Tu es un expert en design. Réponds UNIQUEMENT avec du JSON valide.",
+            },
+            {
+              role: "user",
+              content: `Pour un ebook sur le sujet "${input.subject}", recommande:\n1. Une couleur primaire (hex) qui convient au sujet\n2. Une police (inter, playfair, ou merriweather)\n\nRéponds avec JSON: {"color": "#XXXXXX", "font": "inter|playfair|merriweather"}`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "styling_recommendation",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  color: { type: "string" },
+                  font: { type: "string" },
+                },
+                required: ["color", "font"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const text = typeof response.choices[0]?.message.content === "string"
+          ? response.choices[0].message.content
+          : "{}";
+        const recommendation = JSON.parse(text);
+
+        return {
+          primaryColor: recommendation.color || "#7c3aed",
+          fontFamily: recommendation.font || "inter",
+        };
+      } catch (error) {
+        console.error("[Auto Styling] Error:", error);
+        return {
+          primaryColor: "#7c3aed",
+          fontFamily: "inter",
+        };
+      }
+    }),
 });

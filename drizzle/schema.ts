@@ -51,6 +51,12 @@ export const ebooks = mysqlTable("ebooks", {
   hasWatermark: boolean("hasWatermark").default(false).notNull(),
   errorMessage: text("errorMessage"),
 
+  // Personnalisation
+  primaryColor: varchar("primaryColor", { length: 7 }).default("#7c3aed").notNull(), // Hex color
+  fontFamily: varchar("fontFamily", { length: 64 }).default("inter").notNull(), // inter, playfair, merriweather
+  coverImageUrl: varchar("coverImageUrl", { length: 1024 }), // URL de l'image de couverture
+  autoStyle: boolean("autoStyle").default(true).notNull(), // Mode automatique activé?
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
