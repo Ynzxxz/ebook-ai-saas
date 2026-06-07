@@ -78,12 +78,11 @@ export default function Dashboard() {
           >
             <div>
               <h1 className="text-3xl font-display font-bold">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Gérez vos ebooks et vos crédits</p>
+              <p className="text-muted-foreground mt-1">Créez et gérez vos ebooks illimités</p>
             </div>
             <Button
               className="bg-primary hover:bg-primary/90 glow-violet gap-2"
               onClick={() => navigate("/generate")}
-              disabled={balance <= 0}
             >
               <Plus className="w-4 h-4" />
               Nouvel ebook
@@ -97,26 +96,7 @@ export default function Dashboard() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
           >
-            {/* Credits Card */}
-            <Card className={`glass-card border-border/50 ${balance <= 0 ? "border-red-500/30 bg-red-500/5" : ""}`}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Crédits disponibles</span>
-                  <Zap className={`w-4 h-4 ${balance > 0 ? "text-yellow-400" : "text-red-400"}`} />
-                </div>
-                <div className="text-3xl font-display font-bold">{balance}</div>
-                <p className="text-xs text-muted-foreground mt-1">1 crédit = 1 ebook</p>
-                {balance <= 0 && (
-                  <Button
-                    size="sm"
-                    className="mt-3 w-full bg-accent hover:bg-accent/90 text-white gap-1"
-                    onClick={() => navigate("/pricing")}
-                  >
-                    Acheter des crédits <ArrowRight className="w-3 h-3" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+            {/* Credits Card - Hidden for unlimited access */}
 
             {/* Ebooks Count Card */}
             <Card className="glass-card border-border/50">
