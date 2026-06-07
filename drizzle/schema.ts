@@ -57,6 +57,33 @@ export const ebooks = mysqlTable("ebooks", {
   coverImageUrl: varchar("coverImageUrl", { length: 1024 }), // URL de l'image de couverture
   autoStyle: boolean("autoStyle").default(true).notNull(), // Mode automatique activé?
 
+  // Styles de couverture
+  coverStyle: varchar("coverStyle", { length: 64 }).default("modern").notNull(),
+  coverBackgroundColor: varchar("coverBackgroundColor", { length: 7 }).default("#1a1a2e").notNull(),
+
+  // Arriere-plans
+  pageBackgroundStyle: varchar("pageBackgroundStyle", { length: 64 }).default("solid").notNull(),
+  pageBackgroundColor: varchar("pageBackgroundColor", { length: 7 }).default("#ffffff").notNull(),
+  pageAccentColor: varchar("pageAccentColor", { length: 7 }).default("#7c3aed").notNull(),
+
+  // Mise en page
+  pageLayout: varchar("pageLayout", { length: 64 }).default("single").notNull(),
+  marginSize: varchar("marginSize", { length: 64 }).default("normal").notNull(),
+  lineHeight: varchar("lineHeight", { length: 64 }).default("1.5").notNull(),
+
+  // Watermark
+  watermarkText: varchar("watermarkText", { length: 256 }),
+  watermarkOpacity: int("watermarkOpacity").default(20).notNull(),
+
+  // Numerotation
+  pageNumberingStyle: varchar("pageNumberingStyle", { length: 64 }).default("arabic").notNull(),
+  pageNumberingPosition: varchar("pageNumberingPosition", { length: 64 }).default("bottom-center").notNull(),
+
+  // En-tetes et pieds de page
+  headerText: varchar("headerText", { length: 256 }),
+  footerText: varchar("footerText", { length: 256 }),
+  showChapterTitlesInHeader: boolean("showChapterTitlesInHeader").default(false).notNull(),
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

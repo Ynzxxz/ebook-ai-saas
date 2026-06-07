@@ -42,11 +42,27 @@ export default function Generate() {
     primaryColor: "#7c3aed",
     fontFamily: "inter" as "inter" | "playfair" | "merriweather",
     autoStyle: true,
+    coverStyle: "modern" as "modern" | "minimal" | "professional" | "colorful",
+    coverBackgroundColor: "#1a1a2e",
+    pageBackgroundStyle: "solid" as "solid" | "gradient" | "texture",
+    pageBackgroundColor: "#ffffff",
+    pageAccentColor: "#7c3aed",
+    pageLayout: "single" as "single" | "double",
+    marginSize: "normal" as "small" | "normal" | "large",
+    lineHeight: "1.5" as "1.5" | "1.75" | "2",
+    watermarkText: "",
+    watermarkOpacity: 20,
+    pageNumberingStyle: "arabic" as "arabic" | "roman" | "none",
+    pageNumberingPosition: "bottom-center" as "bottom-center" | "bottom-left" | "bottom-right" | "top-center",
+    headerText: "",
+    footerText: "",
+    showChapterTitlesInHeader: false,
   });
 
   const createMutation = trpc.ebook.create.useMutation();
   const generateMutation = trpc.ebook.generate.useMutation();
   const updateStylingMutation = trpc.ebook.updateStyling.useMutation();
+  const updateAdvancedStylingMutation = trpc.ebook.updateAdvancedStyling.useMutation();
   const getAutoStylingQuery = trpc.ebook.getAutoStyling.useQuery(
     { subject: form.subject },
     { enabled: form.autoStyle && form.subject.length > 0 }

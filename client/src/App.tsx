@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Generate from "./pages/Generate";
 import EbookDetail from "./pages/EbookDetail";
 import CoverEditor from "./pages/CoverEditor";
+import AdvancedStyling from "./pages/AdvancedStyling";
 import Transactions from "./pages/Transactions";
 import Settings from "./pages/Settings";
 import { useAuth } from "./_core/hooks/useAuth";
@@ -60,6 +61,7 @@ function ProtectedRouter() {
       <Route path="/generate" component={Generate} />
       <Route path="/ebook/:id" component={EbookDetail} />
       <Route path="/ebook/:id/cover" component={CoverEditor} />
+      <Route path="/ebook/:id/advanced-styling" component={AdvancedStyling} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/settings" component={Settings} />
       <Route path="/404" component={NotFound} />

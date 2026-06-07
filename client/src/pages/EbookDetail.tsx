@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/Navbar";
-import { BookOpen, Download, ArrowLeft, Loader2, ChevronDown, ChevronUp, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { BookOpen, Download, ArrowLeft, Loader2, ChevronDown, ChevronUp, AlertCircle, Image as ImageIcon, Palette } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
@@ -100,7 +100,7 @@ export default function EbookDetail() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 flex-shrink-0 flex-wrap">
                   {ebook.coverImageUrl && (
                     <Button
                       variant="outline"
@@ -110,6 +110,14 @@ export default function EbookDetail() {
                       Éditer la couverture
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => navigate(`/ebook/${ebook.id}/advanced-styling?ebookId=${ebook.id}`)}
+                  >
+                    <Palette className="w-4 h-4" />
+                    Personnalisation avancée
+                  </Button>
                   {ebook.status === "completed" && ebook.pdfUrl && (
                     <Button
                       className="bg-primary hover:bg-primary/90 gap-2"

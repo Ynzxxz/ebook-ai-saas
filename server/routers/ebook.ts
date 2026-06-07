@@ -389,4 +389,52 @@ export const ebookRouter = router({
         };
       }
     }),
+
+  // --- Update advanced styling ---
+  updateAdvancedStyling: protectedProcedure
+    .input(
+      z.object({
+        ebookId: z.number().int(),
+        coverStyle: z.enum(["modern", "minimal", "professional", "colorful"]).optional(),
+        coverBackgroundColor: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+        pageBackgroundStyle: z.enum(["solid", "gradient", "texture"]).optional(),
+        pageBackgroundColor: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+        pageAccentColor: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+        pageLayout: z.enum(["single", "double"]).optional(),
+        marginSize: z.enum(["small", "normal", "large"]).optional(),
+        lineHeight: z.enum(["1.5", "1.75", "2"]).optional(),
+        watermarkText: z.string().max(256).optional(),
+        watermarkOpacity: z.number().min(0).max(100).optional(),
+        pageNumberingStyle: z.enum(["arabic", "roman", "none"]).optional(),
+        pageNumberingPosition: z.enum(["bottom-center", "bottom-left", "bottom-right", "top-center"]).optional(),
+        headerText: z.string().max(256).optional(),
+        footerText: z.string().max(256).optional(),
+        showChapterTitlesInHeader: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ebook = await getEbookById(input.ebookId);
+      if (!ebook) throw new TRPCError({ code: "NOT_FOUND", message: "Ebook introuvable" });
+      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const updateData: any = {};
+      if (input.coverStyle) updateData.coverStyle = input.coverStyle;
+      if (input.coverBackgroundColor) updateData.coverBackgroundColor = input.coverBackgroundColor;
+      if (input.pageBackgroundStyle) updateData.pageBackgroundStyle = input.pageBackgroundStyle;
+      if (input.pageBackgroundColor) updateData.pageBackgroundColor = input.pageBackgroundColor;
+      if (input.pageAccentColor) updateData.pageAccentColor = input.pageAccentColor;
+      if (input.pageLayout) updateData.pageLayout = input.pageLayout;
+      if (input.marginSize) updateData.marginSize = input.marginSize;
+      if (input.lineHeight) updateData.lineHeight = input.lineHeight;
+      if (input.watermarkText !== undefined) updateData.watermarkText = input.watermarkText;
+      if (input.watermarkOpacity !== undefined) updateData.watermarkOpacity = input.watermarkOpacity;
+      if (input.pageNumberingStyle) updateData.pageNumberingStyle = input.pageNumberingStyle;
+      if (input.pageNumberingPosition) updateData.pageNumberingPosition = input.pageNumberingPosition;
+      if (input.headerText !== undefined) updateData.headerText = input.headerText;
+      if (input.footerText !== undefined) updateData.footerText = input.footerText;
+      if (input.showChapterTitlesInHeader !== undefined) updateData.showChapterTitlesInHeader = input.showChapterTitlesInHeader;
+
+      await updateEbook(input.ebookId, updateData);
+      return { success: true };
+    }),
 });
