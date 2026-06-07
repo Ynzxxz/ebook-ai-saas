@@ -26,9 +26,6 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-6">
-          <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Tarifs
-          </Link>
           {isAuthenticated && (
             <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
@@ -98,9 +95,6 @@ export default function Navbar() {
             className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-xl overflow-hidden"
           >
             <div className="container py-4 flex flex-col gap-3">
-              <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground py-2" onClick={() => setMenuOpen(false)}>
-                Tarifs
-              </Link>
               {isAuthenticated && (
                 <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground py-2" onClick={() => setMenuOpen(false)}>
                   Dashboard

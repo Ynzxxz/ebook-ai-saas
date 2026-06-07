@@ -9,25 +9,50 @@ import Dashboard from "./pages/Dashboard";
 import Generate from "./pages/Generate";
 import EbookDetail from "./pages/EbookDetail";
 import CoverEditor from "./pages/CoverEditor";
-import Pricing from "./pages/Pricing";
 import Transactions from "./pages/Transactions";
-import PayPalSettings from "./pages/PayPalSettings";
-import PaymentSuccess from "./pages/PaymentSuccess";
 import Settings from "./pages/Settings";
+import { useAuth } from "./_core/hooks/useAuth";
+import { useEffect } from "react";
+import { trpc } from "./lib/trpc";
 
-function Router() {
+function ProtectedRouter() {
+  const { isAuthenticated } = useAuth();
+  const { data: user, isLoading } = trpc.auth.me.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
+          <p className="text-muted-foreground mb-6">Ce site est privé et accessible uniquement aux utilisateurs autorisés.</p>
+          <a href="/api/oauth/login" className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
+            Se connecter
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/generate" component={Generate} />
       <Route path="/ebook/:id" component={EbookDetail} />
       <Route path="/ebook/:id/cover" component={CoverEditor} />
-      <Route path="/pricing" component={Pricing} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/settings" component={Settings} />
-      <Route path="/settings/payment" component={PayPalSettings} />
-      <Route path="/payment-success" component={PaymentSuccess} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -45,7 +70,7 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster theme="dark" position="top-right" />
-          <Router />
+          <ProtectedRouter />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
