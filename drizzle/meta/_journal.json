@@ -29,6 +29,13 @@
       "when": 1780864143270,
       "tag": "0003_elite_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1780866934818,
+      "tag": "0004_chemical_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

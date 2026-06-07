@@ -109,6 +109,24 @@ export async function updateEbook(id: number, data: Partial<{
   fontFamily: string;
   coverImageUrl: string;
   autoStyle: boolean;
+  isFavorite: boolean;
+  shareToken: string;
+  isPublic: boolean;
+  coverStyle: string;
+  coverBackgroundColor: string;
+  pageBackgroundStyle: string;
+  pageBackgroundColor: string;
+  pageAccentColor: string;
+  pageLayout: string;
+  marginSize: string;
+  lineHeight: string;
+  watermarkText: string;
+  watermarkOpacity: number;
+  pageNumberingStyle: string;
+  pageNumberingPosition: string;
+  headerText: string;
+  footerText: string;
+  showChapterTitlesInHeader: boolean;
 }>) {
   const db = await getDb();
   if (!db) return;
