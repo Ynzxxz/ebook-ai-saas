@@ -347,9 +347,23 @@ export async function generateEbookPdf(options: GeneratePdfOptions): Promise<{ k
     }
 
     // ── Chapters ──────────────────────────────────────────────────────────────
+    let isFirstChapter = true;
     for (const ch of chapters) {
-      // Each chapter always starts on a fresh decorated page
-      const startY = addContentPage(doc, hasWatermark, watermarkText);
+      // Only add a new page for the first chapter; subsequent chapters continue on the same page
+      let startY: number;
+      if (isFirstChapter) {
+        startY = addContentPage(doc, hasWatermark, watermarkText);
+        isFirstChapter = false;
+      } else {
+        // Check if there's enough space for chapter header; if not, add a new page
+        const spaceNeeded = 100; // Approximate space for chapter header + content
+        if (doc.y + spaceNeeded > BOTTOM_LIMIT) {
+          startY = addContentPage(doc, hasWatermark, watermarkText);
+        } else {
+          // Add some spacing between chapters on the same page
+          startY = doc.y + 24;
+        }
+      }
 
       // Chapter label
       doc.fillColor(C.accent).fillOpacity(1).font("Helvetica-Bold").fontSize(10);

@@ -8,9 +8,10 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
-import { ArrowLeft, Loader2, Save, Palette } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Palette, Grid3x3 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { getAllTemplates, type StylingTemplate } from "../../../shared/templates";
 
 export default function AdvancedStyling() {
   const [, navigate] = useLocation();
@@ -113,6 +114,51 @@ export default function AdvancedStyling() {
             </div>
 
             <div className="space-y-6">
+              {/* Templates prédéfinis */}
+              <Card className="glass-card border-border/50 bg-gradient-to-r from-primary/10 to-accent/10">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Grid3x3 className="w-5 h-5" />
+                    Templates prédéfinis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {getAllTemplates().map((template) => (
+                      <motion.button
+                        key={template.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setForm({
+                            coverStyle: template.coverStyle,
+                            pageBackgroundStyle: template.backgroundColor,
+                            pageLayout: template.pageLayout,
+                            marginSize: template.marginSize === "compact" ? "small" : template.marginSize === "spacious" ? "large" : "normal",
+                            lineHeight: template.lineHeight === "tight" ? "1.5" : template.lineHeight === "loose" ? "2" : "1.75",
+                            pageNumberingStyle: template.pageNumbering,
+                            watermarkText: template.hasWatermark ? "EbookAI Studio" : "",
+                            headerText: template.headerText || "",
+                            footerText: template.footerText || "",
+                            coverBackgroundColor: "#1a1a2e",
+                            pageBackgroundColor: "#ffffff",
+                            pageAccentColor: "#7c3aed",
+                            watermarkOpacity: 20,
+                            pageNumberingPosition: "bottom-center",
+                            showChapterTitlesInHeader: false,
+                          });
+                          toast.success(`Template "${template.name}" appliqué !`);
+                        }}
+                        className="p-4 rounded-lg border border-border/50 hover:border-primary/50 bg-background/50 hover:bg-primary/10 transition-all text-left"
+                      >
+                        <div className="font-semibold text-sm">{template.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{template.description}</div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Styles de couverture */}
               <Card className="glass-card border-border/50">
                 <CardHeader>
@@ -306,9 +352,59 @@ export default function AdvancedStyling() {
                 </CardContent>
               </Card>
 
+              {/* Aperçu en temps réel */}
+              <Card className="glass-card border-border/50 bg-gradient-to-r from-primary/10 to-accent/10">
+                <CardHeader>
+                  <CardTitle className="text-lg">Aperçu en temps réel</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-6 rounded-lg border border-border/50 bg-background">
+                      <div className="text-center mb-4">
+                        <div className="text-sm text-muted-foreground mb-2">Couverture</div>
+                        <div
+                          className="w-full h-48 rounded-lg border-2 border-border/50 flex items-center justify-center text-center p-4"
+                          style={{
+                            backgroundColor: form.coverBackgroundColor,
+                            color: "white",
+                          }}
+                        >
+                          <div>
+                            <div className="font-bold text-xl mb-2">{ebook.title}</div>
+                            <div className="text-sm opacity-75">Style: {form.coverStyle}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-center mt-6">
+                        <div className="text-sm text-muted-foreground mb-2">Page de contenu</div>
+                        <div
+                          className="p-4 rounded-lg border border-border/50 text-left"
+                          style={{
+                            backgroundColor: form.pageBackgroundColor,
+                            color: "#000",
+                            lineHeight: form.lineHeight,
+                          }}
+                        >
+                          <div className="text-xs text-muted-foreground mb-2">{form.headerText || "En-tête"}</div>
+                          <div className="text-sm mb-4">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</div>
+                          <div className="text-xs text-muted-foreground text-center">{form.footerText || "Pied de page"}</div>
+                          {form.watermarkText && (
+                            <div className="text-center text-xs opacity-20 mt-2">{form.watermarkText}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center">
+                      Aperçu - Les paramètres seront appliqués à la génération du PDF
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Button onClick={handleSave} disabled={updateMutation.isPending} className="w-full gap-2 bg-primary hover:bg-primary/90">
                 <Save className="w-4 h-4" />
-                {updateMutation.isPending ? "Sauvegarde..." : "Sauvegarder les paramètres"}
+                {updateMutation.isPending ? "Sauvegarde..." : "Sauvegarder les paramétres"}
               </Button>
             </div>
           </motion.div>
