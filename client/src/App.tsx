@@ -21,12 +21,6 @@ function ProtectedRouter() {
   const { isAuthenticated } = useAuth();
   const { data: user, isLoading } = trpc.auth.me.useQuery();
 
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      window.location.href = '/dashboard';
-    }
-  }, [isAuthenticated, isLoading]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -36,6 +30,11 @@ function ProtectedRouter() {
         </div>
       </div>
     );
+  }
+
+  // Redirection après authentification réussie
+  if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname === '/') {
+    window.location.href = '/dashboard';
   }
 
   if (!isAuthenticated) {
