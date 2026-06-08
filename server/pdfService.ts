@@ -191,10 +191,9 @@ function renderBlock(
     case "paragraph": {
       doc.font("Helvetica").fontSize(11);
       const h = doc.heightOfString(text, { width: CONTENT_W, lineGap: 4 });
-      // If the paragraph fits on the current page, render it; otherwise new page.
-      // For very long paragraphs (> full page), render in place and let PDFKit
-      // handle the overflow — but we must NOT use continued:true.
-      if (y + h > BOTTOM_LIMIT && h < BOTTOM_LIMIT - 60) {
+      // Si le paragraphe ne rentre pas sur la page actuelle, créer une nouvelle page
+      // Cela garantit que le paragraphe complet reste sur une seule page
+      if (y + h > BOTTOM_LIMIT) {
         y = addContentPage(doc, hw, wm);
       }
       doc.fillColor(C.textSecondary).fillOpacity(1).font("Helvetica").fontSize(11);
