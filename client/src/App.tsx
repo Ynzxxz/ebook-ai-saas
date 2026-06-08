@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import { useAuth } from "./_core/hooks/useAuth";
 import { useEffect } from "react";
 import { trpc } from "./lib/trpc";
+import { getLoginUrl } from "./const";
 
 function ProtectedRouter() {
   const { isAuthenticated } = useAuth();
@@ -44,7 +45,10 @@ function ProtectedRouter() {
           <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
           <p className="text-muted-foreground mb-6">Ce site est privé et accessible uniquement aux utilisateurs autorisés.</p>
           <button
-            onClick={() => window.location.href = '/api/oauth/login'}
+            onClick={() => {
+              const loginUrl = getLoginUrl();
+              window.location.href = loginUrl;
+            }}
             className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 cursor-pointer"
           >
             Se connecter
