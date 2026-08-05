@@ -84,11 +84,6 @@ export const ebooks = mysqlTable("ebooks", {
   footerText: varchar("footerText", { length: 256 }),
   showChapterTitlesInHeader: boolean("showChapterTitlesInHeader").default(false).notNull(),
 
-  // Favoris et partage
-  isFavorite: boolean("isFavorite").default(false).notNull(),
-  shareToken: varchar("shareToken", { length: 64 }).unique(), // Token unique pour partage public
-  isPublic: boolean("isPublic").default(false).notNull(), // Ebook public via lien de partage
-
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

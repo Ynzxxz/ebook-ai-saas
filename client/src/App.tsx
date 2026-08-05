@@ -15,11 +15,16 @@ import Settings from "./pages/Settings";
 import { useAuth } from "./_core/hooks/useAuth";
 import { useEffect } from "react";
 import { trpc } from "./lib/trpc";
-import { getLoginUrl } from "./const";
 
 function ProtectedRouter() {
   const { isAuthenticated } = useAuth();
   const { data: user, isLoading } = trpc.auth.me.useQuery();
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      window.location.href = '/dashboard';
+    }
+  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (
@@ -32,11 +37,6 @@ function ProtectedRouter() {
     );
   }
 
-  // Redirection après authentification réussie
-  if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname === '/') {
-    window.location.href = '/dashboard';
-  }
-
   if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -44,10 +44,7 @@ function ProtectedRouter() {
           <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
           <p className="text-muted-foreground mb-6">Ce site est privé et accessible uniquement aux utilisateurs autorisés.</p>
           <button
-            onClick={() => {
-              const loginUrl = getLoginUrl();
-              window.location.href = loginUrl;
-            }}
+            onClick={() => window.location.href = '/api/oauth/login'}
             className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 cursor-pointer"
           >
             Se connecter

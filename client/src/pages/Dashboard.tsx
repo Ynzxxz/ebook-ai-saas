@@ -94,8 +94,10 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
           >
+            {/* Credits Card - Hidden for unlimited access */}
+
             {/* Ebooks Count Card */}
             <Card className="glass-card border-border/50">
               <CardContent className="p-5">
@@ -104,43 +106,7 @@ export default function Dashboard() {
                   <BookOpen className="w-4 h-4 text-blue-400" />
                 </div>
                 <div className="text-3xl font-display font-bold">{ebooks?.length ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Total</p>
-              </CardContent>
-            </Card>
-
-            {/* Completed Ebooks Card */}
-            <Card className="glass-card border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Complétés</span>
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                </div>
-                <div className="text-3xl font-display font-bold">{ebooks?.filter(e => e.status === 'completed').length ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Prêts à télécharger</p>
-              </CardContent>
-            </Card>
-
-            {/* In Progress Card */}
-            <Card className="glass-card border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">En cours</span>
-                  <Loader2 className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-3xl font-display font-bold">{ebooks?.filter(e => e.status === 'generating').length ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Génération en cours</p>
-              </CardContent>
-            </Card>
-
-            {/* Favorites Card */}
-            <Card className="glass-card border-border/50">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Favoris</span>
-                  <Sparkles className="w-4 h-4 text-yellow-400" />
-                </div>
-                <div className="text-3xl font-display font-bold">{ebooks?.filter(e => e.isFavorite).length ?? 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Marqués comme favoris</p>
+                <p className="text-xs text-muted-foreground mt-1">Tous les ebooks</p>
               </CardContent>
             </Card>
           </motion.div>

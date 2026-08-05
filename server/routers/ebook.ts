@@ -437,25 +437,4 @@ export const ebookRouter = router({
       await updateEbook(input.ebookId, updateData);
       return { success: true };
     }),
-
-  toggleFavorite: protectedProcedure
-    .input(z.object({ ebookId: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      const ebook = await getEbookById(input.ebookId);
-      if (!ebook) throw new TRPCError({ code: "NOT_FOUND" });
-      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      await updateEbook(input.ebookId, { isFavorite: !ebook.isFavorite });
-      return { success: true, isFavorite: !ebook.isFavorite };
-    }),
-
-  generateShareLink: protectedProcedure
-    .input(z.object({ ebookId: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      const ebook = await getEbookById(input.ebookId);
-      if (!ebook) throw new TRPCError({ code: "NOT_FOUND" });
-      if (ebook.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      await updateEbook(input.ebookId, { shareToken: token, isPublic: true });
-      return { success: true, shareToken: token };
-    }),
 });
